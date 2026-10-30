@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">ModGate</title>
+  <desc id="desc">A gold gateway with cream arrows pointing in opposite directions on a dark green field.</desc>
+  <rect width="256" height="256" fill="#0d1a17"/>
+  <rect x="8" y="8" width="240" height="240" rx="36" fill="#142823" stroke="#3c5144" stroke-width="2"/>
+  <rect x="17" y="17" width="222" height="222" rx="28" fill="none" stroke="#263c31" stroke-width="1"/>
+  <path d="M58 198V110a70 70 0 0 1 140 0v88h-22v-88a48 48 0 0 0-96 0v88Z" fill="#091410"/>
+  <path d="M58 194V106a70 70 0 0 1 140 0v88h-22v-88a48 48 0 0 0-96 0v88Z" fill="#d9b66d"/>
+  <path d="M67 185v-79a61 61 0 0 1 122 0v79" fill="none" stroke="#f3dca4" stroke-width="2" stroke-linecap="round"/>
+  <path d="M94 114h64m-13-13 13 13-13 13" fill="none" stroke="#f5efdc" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M162 151H98m13-13-13 13 13 13" fill="none" stroke="#f5efdc" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="46" y="190" width="164" height="14" rx="3" fill="#d9b66d"/>
+  <path d="M51 193h154" stroke="#f3dca4" stroke-width="2" stroke-linecap="round"/>
+  <rect x="66" y="216" width="124" height="4" rx="2" fill="#425b48"/>
+</svg>

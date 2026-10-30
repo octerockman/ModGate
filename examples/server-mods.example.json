@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "serverName": "My Valheim server",
+  "allowExtraClientMods": false,
+  "allowNewerClientVersions": false,
+  "mods": [
+    {
+      "guid": "example.gameplay.mod",
+      "name": "Example gameplay mod — replace with your actual mod",
+      "version": "1.2.3",
+      "side": "required",
+      "package": "ExampleAuthor-GameplayMod-1.2.3",
+      "downloadUrl": "https://thunderstore.io/package/download/ExampleAuthor/GameplayMod/1.2.3/",
+      "nexusUrl": "",
+      "autoUpdate": null
+    },
+
+    {
+      "guid": "example.server.admin",
+      "name": "Example server admin mod — never offered to players",
+      "version": "2.0.0",
+      "side": "serverOnly",
+      "package": "",
+      "downloadUrl": "",
+      "nexusUrl": "",
+      "autoUpdate": null
+    },
+
+    {
+      "guid": "example.client.visuals",
+      "name": "Example optional client mod",
+      "version": "1.0.0",
+      "side": "optional",
+      "package": "ExampleAuthor-Visuals-1.0.0",
+      "downloadUrl": "",
+      "nexusUrl": "",
+      "autoUpdate": null
+    },
+
+    {
+      "guid": "example.client.interface",
+      "name": "Example required client interface mod",
+      "version": "1.0.0",
+      "side": "clientOnly",
+      "package": "ExampleAuthor-ClientInterface-1.0.0",
+      "downloadUrl": "",
+      "nexusUrl": "",
+      "automatic": false,
+      "autoUpdate": null,
+      "allowNewerVersion": null
+    }
+  ],
+  "autoUpdateOnRestart": false,
+  "autoUpdateAllMods": false
+}

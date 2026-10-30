@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup><ItemGroup>
+<Compile Include="../src/Shared/*.cs"/><Compile Include="../src/ValheimModGate/Inventory.cs"/><Compile Include="../src/ValheimModGate/LocalManifestReader.cs"/>
+<Reference Include="BepInEx"><HintPath>$(BepInExPath)/BepInEx.dll</HintPath></Reference><Reference Include="Mono.Cecil"><HintPath>$(BepInExPath)/Mono.Cecil.dll</HintPath></Reference>
+<Reference Include="UnityEngine"><HintPath>$(GameManagedPath)/UnityEngine.dll</HintPath><Private>false</Private></Reference><Reference Include="UnityEngine.CoreModule"><HintPath>$(GameManagedPath)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+</ItemGroup></Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>netstandard2.0</TargetFramework><DefineConstants>$(DefineConstants);MODGATE_PRELOADER</DefineConstants></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/Models.cs;../Shared/ServerConfig.cs;../Shared/Storage.cs;../Shared/Profiles.cs;../Shared/ProfileEditing.cs;../Shared/ProfileSnapshots.cs;../Shared/ConfigEditor.cs;../Shared/AdminConfigProtocol.cs;../Shared/ServerHealth.cs;../Shared/ServerConfigFiles.cs;../Shared/ProfileConfigs.cs;../Shared/ProfileHealth.cs;../Shared/PolicyEngine.cs;../Shared/Downloads.cs;../Shared/DependencyRules.cs;../Shared/ClientOnlyRules.cs;../Shared/ProfilePackageSource.cs;../Shared/PackageSources.cs;../Shared/SystemHttps.cs;../Shared/ServerPackageSource.cs;../Shared/NetworkAssemblyInfo.cs;../Shared/PackageArchive.cs;../Shared/ConfigFields.cs;../Shared/AutoSetup.cs;../Shared/ManifestHints.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Reference Include="BepInEx"><HintPath>$(BepInExPath)/BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(BepInExPath)/Mono.Cecil.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(BepInExPath)/0Harmony.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
