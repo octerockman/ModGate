@@ -8,6 +8,12 @@ Keep **four server profiles and an Offline profile**, each with its own mods and
 
 **Install ModGate on both the server and every player joining it. BepInEx must already be installed.** The player needs ModGate before the download prompt can appear; a server cannot install this connector onto an unmodified game.
 
+[Download ModGate](https://github.com/octerockman/ModGate/releases/latest) · [Server mod download guide](https://modgate.pages.dev/guides/download-valheim-server-mods/) · [Multiple server profiles guide](https://modgate.pages.dev/guides/multiple-valheim-server-profiles/)
+
+![Animated ModGate interface preview showing profiles, downloads, and configs with example data](https://modgate.pages.dev/assets/interface-preview.gif)
+
+*Animated interface preview — example data. Text and layout may vary in game; this is not a gameplay recording.*
+
 ## Why players want it
 
 - **One button downloads the server's required mods together.** ModGate handles the checks, package lookup, downloads and profile preparation for supported packages.
