@@ -81,7 +81,7 @@ namespace ModGate
             if (savedServer != null)
                 foreach (var saved in savedServer.Mods.Where(m => m.Guid != Constants.Guid))
                     if (serverPolicy.Mods.Any(m => m.Guid == saved.Guid && m.Side == "optional") || serverPolicy.Mods.All(m => m.Guid != saved.Guid) && ProfileSelection.CanCarry(serverPolicy, saved)) selectedMods.Add(saved.Guid);
-            InitializeDependencyChoices(savedServer);
+            InitializeDependencyChoices();
             setupLog.Write("Active profile: " + catalog.Active);
             foreach (var mod in comparison.Missing) setupLog.Write("MISSING: " + mod.Name + " / " + mod.Guid + " / server requires " + mod.Version + " / package " + mod.Package);
             foreach (var mod in comparison.WrongVersion) setupLog.Write("VERSION MISMATCH: " + mod.Name + " / server requires " + mod.Version + "; loaded " + inventory.FirstOrDefault(m => m.Guid == mod.Guid)?.Version + " / package " + mod.Package);

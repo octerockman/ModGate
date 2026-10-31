@@ -52,12 +52,22 @@ namespace ModGate
             try
             {
                 var destination = SafePath.Under(folder, "payload"); Directory.CreateDirectory(destination);
-                CopyCurrent(root, catalog, slot, destination, token);
+                var receipt = CurrentReceipt(root, catalog, slot, token);
+                foreach (var file in receipt.Files)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var category = file.Path.Split('/')[0];
+                    var sourceRelative = category == "disabled" || catalog.Active != slot ? "ModGate/profiles/" + slot + "/" + file.Path : file.Path;
+                    var source = SafePath.Under(root, sourceRelative);
+                    var target = SafePath.Under(destination, file.Sha256.ToLowerInvariant());
+                    if (!File.Exists(target)) CopySnapshotFile(source, target, token);
+                    if (SafePath.Hash(source) != file.Sha256 || SafePath.Hash(target) != file.Sha256) throw new InvalidDataException("Profile file changed while copying: " + file.Path);
+                    receipt.Bytes = checked(receipt.Bytes + new FileInfo(source).Length);
+                }
                 if (State(root, Profiles.Load(root), slot, token) != expected) throw new InvalidDataException("The profile changed while its restore point was being saved. Try again.");
-                var receipt = Inspect(destination, token);
                 if (Digest(profile, receipt.Files, receipt.Directories) != expected) throw new InvalidDataException("Profile files changed while the restore point was being copied.");
-                var snapshot = new ProfileSnapshot { Id = id, Slot = slot, CreatedUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture), Reason = reason, Working = working, Profile = profile, Files = receipt.Files, Directories = receipt.Directories, Bytes = receipt.Bytes, StateHash = expected };
-                VerifyPayload(destination, snapshot.Files, snapshot.Directories, token);
+                var snapshot = new ProfileSnapshot { Schema = 2, Id = id, Slot = slot, CreatedUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture), Reason = reason, Working = working, Profile = profile, Files = receipt.Files, Directories = receipt.Directories, Bytes = receipt.Bytes, StateHash = expected };
+                VerifySnapshotPayload(destination, snapshot, token);
                 Json.Save(SafePath.Under(folder, "snapshot.json"), snapshot);
                 return snapshot;
             }
@@ -79,7 +89,7 @@ namespace ModGate
         public static ProfileSnapshot Verify(string root, string slot, string snapshotId, CancellationToken token = default)
         {
             var snapshot = Read(root, slot, snapshotId);
-            VerifyPayload(SafePath.Under(root, History(slot) + "/" + snapshotId + "/payload"), snapshot.Files, snapshot.Directories, token);
+            VerifySnapshotPayload(SafePath.Under(root, History(slot) + "/" + snapshotId + "/payload"), snapshot, token);
             return snapshot;
         }
         public static void BeforeChange(string root, ProfileCommand command)
@@ -100,7 +110,18 @@ namespace ModGate
             try
             {
                 var source = SafePath.Under(root, History(slot) + "/" + snapshotId + "/payload");
-                CopyPayload(source, StagePath(root, plan), token);
+                if (snapshot.Schema == 1) CopyPayload(source, StagePath(root, plan), token);
+                else
+                {
+                    var stage = StagePath(root, plan); Directory.CreateDirectory(stage);
+                    foreach (var directory in snapshot.Directories) { token.ThrowIfCancellationRequested(); Directory.CreateDirectory(SafePath.Under(stage, directory)); }
+                    foreach (var file in snapshot.Files)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        var target = SafePath.Under(stage, file.Path); Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                        CopySnapshotFile(SafePath.Under(source, file.Sha256.ToLowerInvariant()), target, token);
+                    }
+                }
                 Seal(root, plan, token);
                 if (Digest(plan.Profile, plan.Files, plan.Directories) != snapshot.StateHash) throw new InvalidDataException("The restore point changed while its files were being prepared.");
                 if (State(root, Profiles.Load(root), slot, token) != state) throw new InvalidDataException("The profile changed while its restore was being prepared. Review it again.");
@@ -206,7 +227,7 @@ namespace ModGate
         {
             if (!Guid.TryParseExact(id, "N", out _)) throw new InvalidDataException("Invalid restore-point identifier.");
             var snapshot = Json.ReadLocal<ProfileSnapshot>(SafePath.Under(root, History(slot) + "/" + id + "/snapshot.json"));
-            if (snapshot == null || snapshot.Schema != 1 || snapshot.Id != id || snapshot.Slot != slot || snapshot.Reason == null || snapshot.Reason.Length > 200 || snapshot.Bytes < 0 ||
+            if (snapshot == null || (snapshot.Schema != 1 && snapshot.Schema != 2) || snapshot.Id != id || snapshot.Slot != slot || snapshot.Reason == null || snapshot.Reason.Length > 200 || snapshot.Bytes < 0 ||
                 !DateTime.TryParse(snapshot.CreatedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _)) throw new InvalidDataException("Invalid restore-point receipt.");
             ValidateProfile(snapshot.Profile, slot); ValidateReceipts(snapshot.Files, snapshot.Directories);
             var state = Digest(snapshot.Profile, snapshot.Files, snapshot.Directories);
@@ -302,6 +323,32 @@ namespace ModGate
             result.Files = result.Files.OrderBy(f => f.Path, StringComparer.Ordinal).ToList(); result.Directories.Sort(StringComparer.Ordinal);
             ValidateReceipts(result.Files, result.Directories); return result;
         }
+        private static void CopySnapshotFile(string source, string target, CancellationToken token)
+        {
+            using (var input = File.OpenRead(source)) using (var output = new FileStream(target, FileMode.CreateNew))
+            {
+                var buffer = new byte[65536]; int count;
+                while ((count = input.Read(buffer, 0, buffer.Length)) > 0) { token.ThrowIfCancellationRequested(); output.Write(buffer, 0, count); }
+            }
+        }
+        private static void VerifySnapshotPayload(string folder, ProfileSnapshot snapshot, CancellationToken token)
+        {
+            if (snapshot.Schema == 1) { VerifyPayload(folder, snapshot.Files, snapshot.Directories, token); return; }
+            ValidateReceipts(snapshot.Files, snapshot.Directories);
+            if (!Directory.Exists(folder)) throw new InvalidDataException("Restore-point payload is missing.");
+            var expected = new HashSet<string>(snapshot.Files.Select(f => f.Sha256.ToLowerInvariant()), StringComparer.Ordinal);
+            var actual = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var entry in Directory.GetFileSystemEntries(folder))
+            {
+                token.ThrowIfCancellationRequested();
+                var name = Path.GetFileName(entry); var safe = SafePath.Under(folder, name);
+                if (Directory.Exists(safe) || !expected.Contains(name) || SafePath.Hash(safe) != name) throw new InvalidDataException("Restore-point files failed verification. No profile files were changed.");
+                actual.Add(name);
+            }
+            if (!actual.SetEquals(expected)) throw new InvalidDataException("Restore-point files are missing.");
+            var bytes = snapshot.Files.Sum(f => new FileInfo(SafePath.Under(folder, f.Sha256.ToLowerInvariant())).Length);
+            if (bytes != snapshot.Bytes) throw new InvalidDataException("Restore-point byte count failed verification.");
+        }
         private static void VerifyPayload(string folder, List<FileDigest> files, List<string> directories, CancellationToken token)
         {
             ValidateReceipts(files, directories); var actual = Inspect(folder, token);
@@ -317,7 +364,12 @@ namespace ModGate
         }
         private static string State(string root, ProfileCatalog catalog, string slot, CancellationToken token)
         {
-            var profile = CurrentProfile(catalog, slot); var receipt = new Receipt();
+            var receipt = CurrentReceipt(root, catalog, slot, token);
+            return Digest(CurrentProfile(catalog, slot), receipt.Files, receipt.Directories);
+        }
+        private static Receipt CurrentReceipt(string root, ProfileCatalog catalog, string slot, CancellationToken token)
+        {
+            var receipt = new Receipt();
             foreach (var category in Categories)
             {
                 receipt.Directories.Add(category);
@@ -335,7 +387,8 @@ namespace ModGate
                 }
                 if (Directory.Exists(source)) Visit(source, category);
             }
-            return Digest(profile, receipt.Files, receipt.Directories);
+            receipt.Files = receipt.Files.OrderBy(f => f.Path, StringComparer.Ordinal).ToList(); receipt.Directories.Sort(StringComparer.Ordinal);
+            return receipt;
         }
         private static string Digest(SavedProfile profile, List<FileDigest> files, List<string> directories)
         {

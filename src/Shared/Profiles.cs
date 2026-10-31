@@ -49,7 +49,17 @@ namespace ModGate
             ValidateCommand(root, command, catalog);
             if (command.Install != null)
                 StageVerifier.VerifyStage(SafePath.Under(root, "ModGate/staging/" + command.Install.Id), command.Install);
-            ProfileSnapshots.BeforeChange(root, command);
+            try { ProfileSnapshots.BeforeChange(root, command); }
+            catch (Exception failure)
+            {
+                // No transaction or live moves have begun. Retain the reviewed request
+                // and staging, but stop treating a failed backup as an active workflow.
+                var recovery = SafePath.Under(root, "ModGate/failed-profile-requests");
+                Directory.CreateDirectory(recovery);
+                var saved = SafePath.Under(recovery, Guid.NewGuid().ToString("N") + ".json");
+                File.Move(requestPath, saved);
+                throw new IOException("Could not save the profile restore point. The failed request was backed up to " + saved + ". Installed profiles and staging were kept; ModGate controls are unlocked. Review the backup error before preparing this change again.", failure);
+            }
             var journal = new ProfileJournal { Id = Guid.NewGuid().ToString("N"), Next = Json.CloneLocal(catalog) };
             Json.Save(journalPath, journal);
             var mover = new Mover(root, journal, afterMove);

@@ -149,7 +149,7 @@ namespace ModGate
                 if (LayoutButton("Save restore point now"))
                 {
                     var root = Paths.BepInExRootPath; var slot = toolSlot;
-                    RunFeature("Saving a restore point…", token => { ProfileSnapshots.Capture(root, slot, "Manual restore point", false, token); return () => OpenHistory(slot); });
+                    RunFeature("Saving a restore point…", token => { ProfileSnapshots.Capture(root, slot, "Manual restore point", false, token); return () => { OpenHistory(slot); progress = "Restore point saved successfully."; }; });
                 }
             }
             else if (featurePage == "Details") DrawModDetails();

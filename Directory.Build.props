@@ -4,9 +4,9 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
-    <Version>0.4.7</Version>
-    <FileVersion>0.4.7.0</FileVersion>
-    <InformationalVersion>0.4.7</InformationalVersion>
+    <Version>0.4.8</Version>
+    <FileVersion>0.4.8.0</FileVersion>
+    <InformationalVersion>0.4.8</InformationalVersion>
     <GameManagedPath Condition="'$(GameManagedPath)' == ''">$(VALHEIM_DIR)/valheim_Data/Managed</GameManagedPath>
     <BepInExPath Condition="'$(BepInExPath)' == ''">$(VALHEIM_DIR)/BepInEx/core</BepInExPath>
   </PropertyGroup>

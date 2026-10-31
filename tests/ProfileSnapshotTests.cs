@@ -21,7 +21,38 @@ internal static partial class Program
             return root;
         }
         string Payload(string root, ProfileSnapshot snapshot) => SafePath.Under(root, "ModGate/profile-history/" + snapshot.Slot + "/" + snapshot.Id + "/payload");
+        string PayloadFile(string root, ProfileSnapshot snapshot, string relative) => SafePath.Under(Payload(root, snapshot), snapshot.Schema == 2 ? snapshot.Files.Single(f => f.Path == relative).Sha256.ToLowerInvariant() : relative);
         ProfileCommand Restore(ProfileRestorePlan plan) => new ProfileCommand { Kind = "restore", Target = plan.Slot, Restore = plan };
+
+        Test("compact restore points avoid the long PlanBuild backup path and reconstruct every file", () =>
+        {
+            var root = Fixture();
+            var path = "plugins/ValheimModGate.Active/LocalMod_" + new string('A', 64) + "/Translations/Chinese/PlanBuild.chinese.json";
+            Put(root, path, "translation-fixture"); Put(root, "plugins/Original/same-content.json", "translation-fixture");
+            Directory.CreateDirectory(SafePath.Under(root, "plugins/Original/empty"));
+            var snapshot = ProfileSnapshots.Capture(root, "offline", "Long-path fixture");
+            Check(snapshot.Schema == 2 && snapshot.Files.Any(f => f.Path == path));
+            Check(SafePath.Under(Payload(root, snapshot), path).Length > 260);
+            Check(Directory.GetFiles(Payload(root, snapshot)).All(f => Path.GetFileName(f).Length == 64 && f.Length < 260));
+            Check(snapshot.Files.Count > Directory.GetFiles(Payload(root, snapshot)).Length);
+            ProfileSnapshots.Verify(root, "offline", snapshot.Id);
+            var restore = ProfileSnapshots.PrepareRestore(root, "offline", snapshot.Id);
+            Check(File.ReadAllText(SafePath.Under(ProfileSnapshots.StagePath(root, restore), path)) == "translation-fixture");
+            Check(Directory.Exists(SafePath.Under(ProfileSnapshots.StagePath(root, restore), "plugins/Original/empty")));
+        });
+        Test("existing tree-format restore points still verify and prepare correctly", () =>
+        {
+            var root = Fixture(); var snapshot = ProfileSnapshots.Capture(root, "offline", "Legacy fixture");
+            var original = Payload(root, snapshot); var legacyId = Guid.NewGuid().ToString("N");
+            var legacyFolder = SafePath.Under(root, "ModGate/profile-history/offline/" + legacyId);
+            var tree = SafePath.Under(legacyFolder, "payload"); Directory.CreateDirectory(tree);
+            foreach (var directory in snapshot.Directories) Directory.CreateDirectory(SafePath.Under(tree, directory));
+            foreach (var file in snapshot.Files) File.Copy(SafePath.Under(original, file.Sha256), SafePath.Under(tree, file.Path));
+            snapshot.Schema = 1; snapshot.Id = legacyId; Json.Save(SafePath.Under(legacyFolder, "snapshot.json"), snapshot);
+            Check(ProfileSnapshots.Verify(root, "offline", legacyId).Schema == 1);
+            var restore = ProfileSnapshots.PrepareRestore(root, "offline", legacyId);
+            Check(File.ReadAllText(SafePath.Under(ProfileSnapshots.StagePath(root, restore), "plugins/Original/original.dll")) == "original");
+        });
 
         Test("restore points preserve offline mods assets configs and metadata without global files or passwords", () =>
         {
@@ -31,7 +62,7 @@ internal static partial class Program
             Check(snapshot.Working && snapshot.Slot == "offline" && snapshot.Profile.Mods.Any(m => m.Guid == "original") && snapshot.Profile.ConfigBindings.Single().Files.Single() == "original.cfg");
             Check(snapshot.Files.Any(f => f.Path == "plugins/Original/art.bundle") && snapshot.Files.Any(f => f.Path == "config/original.cfg"));
             Check(snapshot.Files.All(f => !f.Path.Contains("ValheimModGate") && !f.Path.Contains("BepInEx") && !f.Path.Contains("private-passwords") && !f.Path.StartsWith("config/ModGate/")));
-            Check(snapshot.Bytes == snapshot.Files.Sum(f => new FileInfo(SafePath.Under(Payload(root, snapshot), f.Path)).Length));
+            Check(snapshot.Bytes == snapshot.Files.Sum(f => new FileInfo(PayloadFile(root, snapshot, f.Path)).Length));
             Check(ProfileSnapshots.Verify(root, "offline", snapshot.Id).Id == snapshot.Id && File.ReadAllText(SafePath.Under(root, "config/BepInEx.cfg")) == "loader");
         });
         Test("inactive server restore points capture that server without copying the active setup", () =>
@@ -40,7 +71,7 @@ internal static partial class Program
             var catalog = Profiles.Load(root); catalog.Servers.Single(p => p.Slot == "server-1").CredentialKey = "private-credential-reference"; Json.Save(SafePath.Under(root, "ModGate/profiles.json"), catalog);
             var snapshot = ProfileSnapshots.Capture(root, "server-1", "Before update");
             Check(snapshot.Profile.Name == "Server 1" && snapshot.Profile.ServerKey == new string('a', 64) && snapshot.Profile.CredentialKey == "");
-            Check(File.ReadAllText(SafePath.Under(Payload(root, snapshot), "plugins/ValheimModGate.Active/A-Mod/mod.dll")) == "server-1");
+            Check(File.ReadAllText(PayloadFile(root, snapshot, "plugins/ValheimModGate.Active/A-Mod/mod.dll")) == "server-1");
             Check(Profiles.Load(root).Active == "server-2" && File.ReadAllText(SafePath.Under(root, "plugins/ValheimModGate.Active/A-Mod/mod.dll")) == "server-2");
         });
         Test("identical working captures reuse verified bytes while changed setups and reasons retain history", () =>
@@ -50,7 +81,7 @@ internal static partial class Program
             var beforeEdit = ProfileSnapshots.Capture(root, "offline", "Before profile edits"); Check(beforeEdit.Id != first.Id);
             Put(root, "config/original.cfg", "changed-config"); var changed = ProfileSnapshots.Capture(root, "offline", "Successful join", true);
             Check(changed.Id != first.Id && ProfileSnapshots.List(root, "offline").Count == 3);
-            File.WriteAllText(SafePath.Under(Payload(root, changed), "config/original.cfg"), "damaged-history");
+            File.WriteAllText(PayloadFile(root, changed, "config/original.cfg"), "damaged-history");
             var replacement = ProfileSnapshots.Capture(root, "offline", "Successful join", true);
             Check(replacement.Id != changed.Id && ProfileSnapshots.Verify(root, "offline", replacement.Id).Working);
         });
@@ -65,7 +96,7 @@ internal static partial class Program
         Test("snapshot verification rejects changed payloads before any restore is prepared", () =>
         {
             var root = Fixture(); var snapshot = ProfileSnapshots.Capture(root, "offline", "Known setup");
-            File.WriteAllText(SafePath.Under(Payload(root, snapshot), "plugins/Original/original.dll"), "corrupt");
+            File.WriteAllText(PayloadFile(root, snapshot, "plugins/Original/original.dll"), "corrupt");
             Throws<InvalidDataException>(() => ProfileSnapshots.Verify(root, "offline", snapshot.Id));
             Throws<InvalidDataException>(() => ProfileSnapshots.PrepareRestore(root, "offline", snapshot.Id));
             Check(File.ReadAllText(SafePath.Under(root, "plugins/Original/original.dll")) == "original" && !Profiles.Pending(root));
@@ -75,7 +106,7 @@ internal static partial class Program
             foreach (var change in new[] { "extra", "traversal", "protected", "duplicate" })
             {
                 var root = Fixture(); var snapshot = ProfileSnapshots.Capture(root, "offline", "Known setup");
-                if (change == "extra") File.WriteAllText(SafePath.Under(Payload(root, snapshot), "plugins/unlisted.dll"), "unlisted");
+                if (change == "extra") File.WriteAllText(SafePath.Under(Payload(root, snapshot), "unlisted.dll"), "unlisted");
                 else
                 {
                     if (change == "duplicate") snapshot.Files.Add(Json.CloneLocal(snapshot.Files[0]));
@@ -151,6 +182,19 @@ internal static partial class Program
                 Check(Profiles.Load(root).Active == "offline" && !File.Exists(SafePath.Under(root, "ModGate/profile-journal.json")));
                 Profiles.Apply(root, _ => { }); Check(File.ReadAllText(SafePath.Under(root, "plugins/Original/original.dll")) == "original");
             }
+        });
+        Test("failed before-change backup unlocks controls and retains the request and staged payload", () =>
+        {
+            var root = Fixture(); Profiles.Schedule(root, PrepareProfile(root, 1, 'a')); Profiles.Apply(root, _ => { });
+            var command = PrepareProfile(root, 1, 'a'); Profiles.Schedule(root, command);
+            var request = File.ReadAllText(SafePath.Under(root, "ModGate/profile-request.json"));
+            Put(root, "ModGate/profile-history", "blocked-history-directory");
+            Throws<IOException>(() => Profiles.Apply(root, _ => { }));
+            Check(!Profiles.Pending(root) && Profiles.Load(root).Active == "server-1");
+            Check(File.ReadAllText(Directory.GetFiles(SafePath.Under(root, "ModGate/failed-profile-requests")).Single()) == request);
+            Check(Directory.Exists(SafePath.Under(root, "ModGate/staging/" + command.Install!.Id)));
+            Check(!File.Exists(SafePath.Under(root, "ModGate/profile-journal.json")));
+            Profiles.Apply(root, _ => { }); Check(!Profiles.Pending(root));
         });
         Test("before-change snapshots cover existing mutations without snapshotting unrelated switches", () =>
         {

@@ -1,6 +1,6 @@
 {
   "name": "ModGate",
-  "version_number": "0.4.7",
+  "version_number": "0.4.8",
   "website_url": "https://github.com/octerockman/ModGate",
   "description": "One button downloads a server's required mods. ModGate handles checks, supported downloads and profiles. Owners choose mod rules, allow extra client mods and control auto-updates. Needed on server and clients.",
   "dependencies": [

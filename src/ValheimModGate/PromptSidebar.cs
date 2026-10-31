@@ -25,10 +25,12 @@ namespace ModGate
         }
         private bool WorkflowBusy => task != null || featureTask != null || SelfUpdateBusy || SelfUpdateQueued || scheduled || Profiles.Pending(Paths.BepInExRootPath);
         private bool Busy => WorkflowBusy || ServerHealthRequestActive;
+        private bool InstallationReady => !manager && !scheduled && task == null && prepared != null && preparedProfile?.Incomplete != true && error.Length == 0 && !settingsPage && featurePage.Length == 0;
         private string CurrentSlot => editingSlot ?? (!manager && targetSlot.Length > 0 ? targetSlot : catalog.Active);
         private void DrawWindow(float width, float height)
         {
             InitializeShell();
+            if (InstallationReady) { DrawInstallationReady(width, height); return; }
             var sidebar = width >= 850 && height >= 680 ? 200f : 0f;
             var left = sidebar + 28; contentWidth = Mathf.Max(1, width - left - 28);
             var showProfileTabs = !settingsPage && featurePage != "Server" && featurePage != "Creators" && (!(manager && editingSlot == null) || ServerHealthSelected);
@@ -73,6 +75,14 @@ namespace ModGate
             if (ServerHealthSelected) HealthLabel(new Rect(left, top + 46, contentWidth, subtitleHeight), subtitle, "body", "muted");
             else LabelAt(new Rect(left, top + 46, contentWidth, subtitleHeight), subtitle, "body", "muted");
             var contentTop = top + 66 + subtitleHeight;
+            var status = error.Length > 0 ? "Could not complete action: " + error : progress;
+            if (status.Length > 0)
+            {
+                var working = task != null || featureTask != null || SelfUpdateBusy;
+                GUI.DrawTexture(new Rect(left, contentTop, contentWidth, 64), panelBackground!);
+                LabelAt(new Rect(left + 12, contentTop + 8, contentWidth - 24, 52), (working && error.Length == 0 ? "Working… " : "") + status, "body", error.Length > 0 ? "red" : working ? "gold" : "green");
+                contentTop += 76;
+            }
             if (showProfileTabs)
             {
                 var tabs = ServerConfigAvailable?.Invoke() == true ? new[] { "Mods", "Configs", "Mod details", "Activity", "Server health" } : new[] { "Mods", "Configs", "Mod details", "Activity" };
@@ -135,6 +145,22 @@ namespace ModGate
             if (Action(new Rect(12, height - 120, width - 24, 38), "Report a bug ↗", "quiet")) OpenBugReport();
             LabelAt(new Rect(24, height - 72, width - 48, 20), ProfileName(catalog.Active) + " active", "small", "green");
             LabelAt(new Rect(24, height - 50, width - 48, 20), "Changes apply after restart", "small", "muted");
+        }
+        private void DrawInstallationReady(float width, float height)
+        {
+            var left = 32f; var available = width - 64;
+            var top = Mathf.Max(32, (height - 250) / 2);
+            LabelAt(new Rect(left, top, available, 44), "Profile prepared successfully", "title", "green");
+            LabelAt(new Rect(left, top + 58, available, 64), "Your selected mods are ready to install. Restart Valheim to activate this profile, then join the server again.", "body");
+            var stacked = available < 600; var buttonWidth = stacked ? available : (available - 16) / 2;
+            var normal = button; button = primaryStyle; GUI.enabled = true;
+            try
+            {
+                if (Button(new Rect(left, top + 144, buttonWidth, 46), "Install and restart")) { Schedule(); if (scheduled) Restart(); }
+                if (Button(new Rect(stacked ? left : left + buttonWidth + 16, top + (stacked ? 202 : 144), buttonWidth, 46), "Install on next launch")) Schedule();
+            }
+            catch (Exception failure) when (!(failure is ExitGUIException)) { error = failure.Message; log("ModGate action: " + failure); }
+            finally { button = normal; GUI.enabled = true; }
         }
         private void DrawFooter(float left, float width, float height)
         {

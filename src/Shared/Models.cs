@@ -12,7 +12,7 @@ namespace ModGate
     internal static class Constants
     {
         public const string Guid = "studio.valheim.modgate";
-        public const string Version = "0.4.7";
+        public const string Version = "0.4.8";
         public const int Protocol = 6;
         public const int ManifestSchema = 1;
         public const int MaxJson = 256 * 1024;

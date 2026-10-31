@@ -18,7 +18,7 @@ You choose how your server works: which mods are required or optional, whether p
 2. Start the server once. ModGate scans loaded BepInEx plugins and creates its setup under `BepInEx/config/ModGate/`.
 3. Stop the server and review `server-mods.json`. Confirm the server name, mod classifications, download mappings, and rules for extra or newer client mods. The included `server-mods.example.json` explains the shape; keep your generated real entries rather than replacing them with the examples.
 4. Restart and check `lookup-report.json` for unresolved downloads. Background lookup may still be running after startup; allow it to finish and reconnect before testing a missing mapping again.
-5. Give players ModGate **0.4.7** and test a join from a separate client. When upgrading ModGate, update both DLLs on the server and every client. Retain existing configs and profiles.
+5. Give players ModGate **0.4.8** and test a join from a separate client. When upgrading ModGate, update both DLLs on the server and every client. Retain existing configs and profiles.
 
 `server-mods.json` is the active owner-editable list. The older `server-mods.discovered.json` is unused. ModGate also creates `server-only.txt` for exclusions, `server-id.txt` for the server's identity, and `admin-access.key` for remote administrator access. Keep the server identity when upgrading so existing profiles continue to recognize it.
 

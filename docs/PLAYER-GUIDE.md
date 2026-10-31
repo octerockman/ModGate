@@ -22,7 +22,7 @@ You need ModGate on your computer because the server cannot install mods on your
    BepInEx/patchers/ValheimModGate/ValheimModGate.Preloader.dll
    ```
 
-3. Start Valheim as usual. Your ModGate version must match the server's; for this release, both sides need **0.4.7**. Keep your existing profiles and configs when upgrading.
+3. Start Valheim as usual. Your ModGate version must match the server's; for this release, both sides need **0.4.8**. Keep your existing profiles and configs when upgrading.
 
 Mod managers can add their own author/package folders below plugins and patchers. Keep using the same external manager profile. ModGate does not install or update BepInEx.
 

@@ -20,20 +20,11 @@ namespace ModGate
             lock (dependencySuggestions)
                 if (!dependencySuggestions.Any(s => s.Package == suggestion.Package && s.Parent == suggestion.Parent)) dependencySuggestions.Add(suggestion);
         }
-        private void InitializeDependencyChoices(SavedProfile? saved)
+        private void InitializeDependencyChoices()
         {
             lock (dependencySuggestions) dependencySuggestions.Clear();
             selectedDependencyPackages.Clear(); dependencySuggestionsExpanded = true;
             if (policy == null) return;
-            if (saved != null)
-                foreach (var package in saved.Packages)
-                {
-                    var id = PackageId.Parse(package);
-                    if (Downloads.IsBootstrap(id) || id.Repository == "github" || policy.ForbiddenPackages.Contains(id.Key, StringComparer.OrdinalIgnoreCase)) continue;
-                    if (policy.Mods.Any(m => m.Package.Length > 0 && PackageId.Parse(m.Package).Key.Equals(id.Key, StringComparison.OrdinalIgnoreCase))) continue;
-                    selectedDependencyPackages.Add(package);
-                    SuggestDependency(new DependencySuggestion { Package = package, Parent = "Previously selected for this profile" });
-                }
             foreach (var mod in policy.Mods)
             {
                 foreach (var dependency in DependencyRules.Of(mod).Where(d => d.Package.Length > 0))
@@ -76,7 +67,6 @@ namespace ModGate
         }
         private bool DependencyParentIncluded(string parent)
         {
-            if (parent == "Previously selected for this profile") return true;
             var included = policy!.Mods.Where(m => PolicyEngine.Required(m) || selectedMods.Contains(m.Guid)).Concat(local.Where(m => selectedMods.Contains(m.Guid))).ToArray();
             if (included.Any(m => m.Name == parent)) return true;
             if (!PackageId.Allowed(parent)) return false;

@@ -19,10 +19,11 @@ internal static class SelfUpdateUiChecks
             using var prompt = new Prompt(_ => { }, () => { }, () => { });
             string? requested = null;
             prompt.FindSelfUpdate = (version, early, token) => { requested = version; return Task.FromResult(new SelfUpdateRelease { Version = version!, Asset = "official fixture" }); };
-            prompt.ShowConnectorUpdate("Test server", "0.4.8"); Finish(prompt); prompt.Draw();
-            check(requested == "0.4.8" && (bool)Get(prompt, "settingsPage")!);
-            check(GUI.Buttons.Any(b => b.Text == "Download ModGate 0.4.8 for review"));
-            check(GUILayout.Labels.Any(l => l.Contains("Test server requires ModGate 0.4.8")));
+            var current = Version.Parse(Constants.Version); var newer = new Version(current.Major, current.Minor, current.Build + 1).ToString();
+            prompt.ShowConnectorUpdate("Test server", newer); Finish(prompt); prompt.Draw();
+            check(requested == newer && (bool)Get(prompt, "settingsPage")!);
+            check(GUI.Buttons.Any(b => b.Text == "Download ModGate " + newer + " for review"));
+            check(GUILayout.Labels.Any(l => l.Contains("Test server requires ModGate " + newer)));
             check(!File.Exists(Path.Combine(BepInEx.Paths.BepInExRootPath, SelfUpdateInstaller.Active)));
         });
         test("launch check reports a release without installing and respects the 12-hour check interval", () =>

@@ -159,10 +159,29 @@ internal static class Feature042Checks
             check(GUILayout.Toggles.Single(t => t.Text == label) is { Selected: false, Enabled: true });
             var id = Guid.NewGuid().ToString("N"); var stage = Path.Combine(BepInEx.Paths.BepInExRootPath, "ModGate", "staging", id); Directory.CreateDirectory(stage); File.WriteAllText(Path.Combine(stage, "fixture.txt"), "fixture");
             Set(prompt, "prepared", new PendingInstall { Id = id }); Set(prompt, "preparedProfile", new SavedProfile());
-            GUI.Click = label; VisualPreview.Capture(prompt);
+            Call(prompt, "ChangeDependencyChoice", package, true); VisualPreview.Capture(prompt);
             check(((HashSet<string>)Get(prompt, "selectedDependencyPackages")!).Contains(package) && Get(prompt, "prepared") == null && Get(prompt, "preparedProfile") == null && !Directory.Exists(stage));
             GUI.Click = label; VisualPreview.Capture(prompt);
             check(((HashSet<string>)Get(prompt, "selectedDependencyPackages")!).Count == 0);
+        });
+        test("old profile packages never create or preselect dependency suggestions", () =>
+        {
+            ZNet.instance = null;
+            var root = Path.Combine(Path.GetTempPath(), "ModGate-old-suggestions-" + Guid.NewGuid().ToString("N")); BepInEx.Paths.BepInExRootPath = root;
+            var key = new string('f', 64);
+            var parent = new ModEntry { Guid = "parent", Name = "Current parent", Side = "required", Version = "1.0.0", Dependencies = new() { new() { Guid = "library", Package = "Author-Library-2.0.0" } } };
+            Json.Save(SafePath.Under(root, "ModGate/profiles.json"), new ProfileCatalog { Servers = new() { new SavedProfile { Slot = "server-1", ServerKey = key, Name = "Saved", Packages = new() { "Author-RemovedMod-1.0.0", "Author-Library-1.0.0" } } } });
+            using var prompt = new Prompt(_ => { }, () => { }, () => { });
+            var policy = new Policy { AllowExtras = true, Mods = new() { parent } };
+            prompt.Show(policy, new Comparison(), Array.Empty<ModEntry>(), key); VisualPreview.Capture(prompt);
+            check(!GUILayout.Toggles.Any(t => t.Text.Contains("RemovedMod") || t.Text.Contains("Author-Library-1.0.0")));
+            check(GUILayout.Toggles.Single(t => t.Text == "Download suggested dependency: Author-Library-2.0.0") is { Selected: false, Enabled: true });
+            check(((HashSet<string>)Get(prompt, "selectedDependencyPackages")!).Count == 0);
+            GUI.Click = "Download suggested dependency: Author-Library-2.0.0"; VisualPreview.Capture(prompt);
+            check(((HashSet<string>)Get(prompt, "selectedDependencyPackages")!).Count == 1);
+            prompt.Show(policy, new Comparison(), Array.Empty<ModEntry>(), key); VisualPreview.Capture(prompt);
+            check(((HashSet<string>)Get(prompt, "selectedDependencyPackages")!).Count == 0);
+            check(!GUILayout.Labels.Any(l => l.Contains("Previously selected for this profile")));
         });
         test("a server that disallows extras cannot opt into an undeclared suggested package", () =>
         {

@@ -76,8 +76,9 @@ internal static partial class Program
         });
         Test("server connector version selects exact official release and rejects injected version text", () =>
         {
-            var policy = Policy(Mod(Constants.Guid, version: "0.4.8.0"));
-            Check(SelfUpdateSource.RequiredByServer(policy) == "0.4.8"); policy.Mods[0].Version = Constants.Version; Check(SelfUpdateSource.RequiredByServer(policy) == null);
+            var current = Version.Parse(Constants.Version); var newer = new Version(current.Major, current.Minor, current.Build + 1).ToString();
+            var policy = Policy(Mod(Constants.Guid, version: newer + ".0"));
+            Check(SelfUpdateSource.RequiredByServer(policy) == newer); policy.Mods[0].Version = Constants.Version; Check(SelfUpdateSource.RequiredByServer(policy) == null);
             policy.Mods[0].Version = "../../other"; Throws<InvalidDataException>(() => SelfUpdateSource.RequiredByServer(policy));
             Check(!SelfUpdateSource.Trusted(new Uri("https://github.com.evil.test/file")) && !SelfUpdateSource.Trusted(new Uri("http://github.com/file")));
         });
@@ -127,7 +128,7 @@ internal static partial class Program
         });
         Test("startup guard refuses an interrupted pair and an old preloader already loaded during replacement", () =>
         {
-            var queued = UpdatePlan(); var root = queued.Root; Json.Save(SafePath.Under(root, SelfUpdateInstaller.Active), queued);
+            var current = Version.Parse(Constants.Version); var queued = UpdatePlan(new Version(current.Major, current.Minor, current.Build + 1).ToString()); var root = queued.Root; Json.Save(SafePath.Under(root, SelfUpdateInstaller.Active), queued);
             var first = queued.Files[0]; File.Copy(SafePath.Under(root, first.Staged), SafePath.Under(root, first.Target), true);
             Check(SelfUpdateInstaller.GuardStartup(root, _ => { }));
             var second = queued.Files[1]; File.Copy(SafePath.Under(root, second.Staged), SafePath.Under(root, second.Target), true);

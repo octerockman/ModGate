@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.8
+
+- Display action progress, completion and errors in a visible status panel across pages. Clear the download cache and sync configs in the background with repeated actions blocked while running.
+- Store new restore-point payloads under short verified hash names, preserving the original paths in receipts, to prevent deeply nested mod files from exceeding the Windows/Unity backup path limit. Existing tree-format restore points remain readable.
+- After successful profile preparation, show a success message with only Install and restart and Install on next launch. Keep dependency suggestions on the selection screen, and retain warnings for incomplete preparation.
+- Remove saved-profile history as a dependency suggestion source. Dependency downloads start unchecked on each join and require a current dependency declaration and player selection.
+- If a restore-point backup fails before installation begins, retain the failed request and staging for recovery while releasing the pending-operation lock on the interface.
+
 ## 0.4.7
 
 - Added Support Mod Creators in the sidebar, with Active profile only by default and an All profiles filter.

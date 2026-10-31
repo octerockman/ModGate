@@ -35,6 +35,13 @@ namespace ModGate
         }
         private void DrawContent()
         {
+            if (!manager && prepared != null && !settingsPage && featurePage.Length == 0)
+            {
+                DrawReview();
+                if (error.Length > 0) Label("Setup stopped: " + error);
+                if (scheduled) Label("The reviewed change is saved. Restart Valheim to apply it.");
+                return;
+            }
             if (ServerHealthSelected && !settingsPage) { DrawServerHealth(); return; }
             if (settingsPage) { DrawSettings(); return; }
             if (navigationTab == "Mod details" && (editingSlot != null || !manager && policy != null)) { DrawModBrowser(); return; }
@@ -145,11 +152,17 @@ namespace ModGate
         private void DrawConfigSync()
         {
             Label("Copy applicable settings from the current profile to the others. Previous settings are backed up.");
+            GUI.enabled = !Busy;
             if (LayoutButton("Sync applicable configs to all profiles"))
             {
-                try { Inventory.SaveConfigFiles(); var count = ProfileConfigs.SyncAll(Paths.BepInExRootPath, Inventory.Loaded()); progress = "Synced " + count + " applicable config files. Backups are kept."; }
+                try
+                {
+                    Inventory.SaveConfigFiles(); var root = Paths.BepInExRootPath; var inventory = Inventory.Loaded();
+                    RunFeature("Syncing applicable configs to all profiles…", token => { token.ThrowIfCancellationRequested(); var count = ProfileConfigs.SyncAll(root, inventory); return () => progress = "Synced " + count + " applicable config files. Backups are kept."; });
+                }
                 catch (Exception failure) { error = failure.Message; }
             }
+            GUI.enabled = true;
         }
         private void DrawPasswordSettings(string slot)
         {
@@ -167,6 +180,7 @@ namespace ModGate
         private void DrawSettings()
         {
             Label("Settings");
+            if (featureTask != null) { Label("Please wait while this action finishes…"); return; }
             DrawSelfUpdates();
             var order = SourcePreferences.Load(Paths.BepInExRootPath);
             Label("Download priority: " + string.Join(" > ", order));
@@ -174,8 +188,12 @@ namespace ModGate
             var enabled = Passwords.Preferences().Enabled; var next = Toggle(enabled, "Remember server passwords by default");
             if (next != enabled) Passwords.EnableAll(next);
             Label("Passwords stay encrypted on this computer and are excluded from profile configuration.");
-            GUI.enabled = task == null && prepared == null && preparedEdit == null && !Profiles.Pending(Paths.BepInExRootPath);
-            if (LayoutButton("Clear download cache")) { try { DownloadCache.Clear(Paths.BepInExRootPath); progress = "Failed attempts and cached downloads cleared."; } catch (Exception failure) { error = failure.Message; } }
+            GUI.enabled = !Busy && prepared == null && preparedEdit == null;
+            if (LayoutButton("Clear download cache"))
+            {
+                var root = Paths.BepInExRootPath;
+                RunFeature("Clearing download cache…", token => { token.ThrowIfCancellationRequested(); DownloadCache.Clear(root); return () => progress = "Download cache cleared successfully."; });
+            }
             GUI.enabled = true;
             DrawConfigSync();
             if (LayoutButton("Remove all downloaded mods")) confirmRemoval = true;

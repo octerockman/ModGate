@@ -318,14 +318,14 @@ Test("confirmed profile deletion schedules only the chosen server profile", () =
     using var prompt=new Prompt(_=>{},()=>{},()=>{});ZInput.ManagerShortcut();prompt.Update();GUI.Click="More (server-1)";prompt.Draw();GUI.Click="Delete server-1";prompt.Draw();GUI.Click="Confirm deletion";prompt.Draw();
     var command=Json.Read<ProfileCommand>(File.ReadAllText(SafePath.Under(BepInEx.Paths.BepInExRootPath,"ModGate/profile-request.json")));Check(command.Kind=="delete"&&command.Target=="server-1");
 });
-Test("download review identifies the actual manifest fallback source",()=>
+Test("successful download landing omits package source details",()=>
 {
     BepInEx.Paths.BepInExRootPath=Path.Combine(Path.GetTempPath(),"ModGate-source-review-"+Guid.NewGuid().ToString("N"));
     using var prompt=new Prompt(_=>{},()=>{},()=>{});var mod=new ModEntry{Guid="a",Name="A",Version="1.0.0",Side="required"};var policy=new Policy{ServerName="Review",Mods=new List<ModEntry>{mod}};
     prompt.Show(policy,new Comparison{Missing={mod}},Array.Empty<ModEntry>(),new string('7',64));
     var flags=BindingFlags.Instance|BindingFlags.NonPublic;typeof(Prompt).GetField("prepared",flags)!.SetValue(prompt,new PendingInstall{Id=Guid.NewGuid().ToString("N"),Packages=new List<string>{"github:Author/Shared/v1.0.0/Shared.zip"}});
     typeof(Prompt).GetField("preparedProfile",flags)!.SetValue(prompt,new SavedProfile{Name="Review"});prompt.Draw();
-    Check(GUILayout.Labels.Any(s=>s.Contains("GitHub release; source is the installed mod manifest")));
+    Check(DrawCapture.Commands.Any(c=>c.Text=="Profile prepared successfully")&&!GUILayout.Labels.Any(s=>s.Contains("GitHub release; source is the installed mod manifest")));
 });
 Test("setup failure offers override outside the scroll area and keeps escape usable",()=>
 {
@@ -507,6 +507,21 @@ Test("settings defaults password remembering on and exposes cache cleanup",()=>
     Check(GUILayout.Toggles.Any(t=>t.Text=="Remember server passwords by default"&&t.Selected));
     Check(GUI.Buttons.Any(b=>b.Text=="Clear download cache"&&b.Enabled));
 });
+Test("cache cleanup shows busy then success and settings errors remain visible",()=>
+{
+    var root=Path.Combine(Path.GetTempPath(),"ModGate-feedback048-"+Guid.NewGuid().ToString("N"));BepInEx.Paths.BepInExRootPath=root;
+    var cache=SafePath.Under(root,"ModGate/download-cache");Directory.CreateDirectory(cache);File.WriteAllText(Path.Combine(cache,"fixture.zip"),"cached");
+    using var prompt=new Prompt(_=>{},()=>{},()=>{});prompt.ShowError("fixture");GUI.Click="Settings";prompt.Draw();
+    GUI.Click="Clear download cache";prompt.Draw();VisualPreview.Capture(prompt);
+    Check(DrawCapture.Commands.Any(c=>c.Text.Contains("Working… Clearing download cache")));
+    Check(!GUI.Buttons.Any(b=>b.Text=="Clear download cache"&&b.Enabled));
+    var flags=BindingFlags.NonPublic|BindingFlags.Instance;var work=(Task)typeof(Prompt).GetField("featureTask",flags)!.GetValue(prompt)!;
+    Check(SpinWait.SpinUntil(()=>work.IsCompleted,5000));typeof(Prompt).GetMethod("UpdateFeatures",flags)!.Invoke(prompt,null);VisualPreview.Capture(prompt);
+    Check(DrawCapture.Commands.Any(c=>c.Text=="Download cache cleared successfully.")&&!Directory.Exists(cache));
+    typeof(Prompt).GetField("featureTask",flags)!.SetValue(prompt,Task.FromException<Action>(new IOException("Fixture cleanup denied")));
+    typeof(Prompt).GetMethod("UpdateFeatures",flags)!.Invoke(prompt,null);VisualPreview.Capture(prompt);
+    Check(DrawCapture.Commands.Any(c=>c.Text.Contains("Could not complete action: Fixture cleanup denied")));
+});
 Test("activity copy error never requires scrolling the full log",()=>
 {
     BepInEx.Paths.BepInExRootPath=Path.Combine(Path.GetTempPath(),"ModGate-error030-"+Guid.NewGuid().ToString("N"));
@@ -527,7 +542,24 @@ Test("back from review returns to selection while preserving checked optional ch
     var optional=new ModEntry{Guid="option",Name="Option",Version="1.0.0",Side="optional"};using var prompt=new Prompt(_=>{},()=>{},()=>{});
     prompt.Show(new Policy{Mods=new(){optional}},new Comparison(),Array.Empty<ModEntry>(),new string('a',64));prompt.Draw();GUI.Click=GUILayout.Toggles.Single(t=>t.Text.TrimStart().StartsWith("Optional: Option")).Text;prompt.Draw();
     var flags=BindingFlags.NonPublic|BindingFlags.Instance;typeof(Prompt).GetField("prepared",flags)!.SetValue(prompt,new PendingInstall{Id=Guid.NewGuid().ToString("N")});typeof(Prompt).GetField("preparedProfile",flags)!.SetValue(prompt,new SavedProfile());
-    GUI.Click="Back to selection";prompt.Draw();Check(prompt.IsVisible&&typeof(Prompt).GetField("prepared",flags)!.GetValue(prompt)==null&&((HashSet<string>)typeof(Prompt).GetField("selectedMods",flags)!.GetValue(prompt)!).Contains("option"));
+    typeof(Prompt).GetMethod("NavigateBack",flags)!.Invoke(prompt,null);Check(prompt.IsVisible&&typeof(Prompt).GetField("prepared",flags)!.GetValue(prompt)==null&&((HashSet<string>)typeof(Prompt).GetField("selectedMods",flags)!.GetValue(prompt)!).Contains("option"));
+});
+Test("successful preparation shows only success and two install actions without dependency warnings",()=>
+{
+    BepInEx.Paths.BepInExRootPath=Path.Combine(Path.GetTempPath(),"ModGate-success048-"+Guid.NewGuid().ToString("N"));
+    var parent=new ModEntry{Guid="parent",Name="Parent",Version="1.0.0",Side="required",Dependencies=new(){new PluginDependency{Guid="library",Package="Author-Library-1.0.0"}}};
+    using var prompt=new Prompt(_=>{},()=>{},()=>{});prompt.Show(new Policy{AllowExtras=true,Mods=new(){parent}},new Comparison(),Array.Empty<ModEntry>(),new string('e',64));
+    var flags=BindingFlags.NonPublic|BindingFlags.Instance;typeof(Prompt).GetField("prepared",flags)!.SetValue(prompt,new PendingInstall{Id=Guid.NewGuid().ToString("N"),Packages=new(){"Author-Parent-1.0.0"}});typeof(Prompt).GetField("preparedProfile",flags)!.SetValue(prompt,new SavedProfile());
+    foreach(var size in new[]{(1280,1000),(640,360)})
+    {
+        Screen.width=size.Item1;Screen.height=size.Item2;VisualPreview.Capture(prompt);
+        Check(GUI.Buttons.Count==2&&GUI.Buttons.All(b=>b.Text=="Install and restart"||b.Text=="Install on next launch"));
+        Check(DrawCapture.Commands.Any(c=>c.Text=="Profile prepared successfully"));
+        Check(!GUILayout.Toggles.Any()&&!GUILayout.Labels.Any(l=>l.Contains("Suggested dependencies")||l.Contains("needs attention")||l.Contains("Prepared packages")));
+    }
+    Screen.width=1280;Screen.height=1000;
+    typeof(Prompt).GetField("preparedProfile",flags)!.SetValue(prompt,new SavedProfile{Incomplete=true});VisualPreview.Capture(prompt);
+    Check(!DrawCapture.Commands.Any(c=>c.Text=="Profile prepared successfully")&&GUILayout.Labels.Any(l=>l.Contains("PARTIAL PROFILE")));
 });
 Test("closing setup discards a late successful staging result without reopening review",()=>
 {
