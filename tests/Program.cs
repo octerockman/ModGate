@@ -43,6 +43,10 @@ internal static partial class Program
     private static async Task Run(string[] args)
     {
         Directory.CreateDirectory(scratch);
+        if (args.Contains("--creator-support-only")) { CreatorSupportChecks(); Console.WriteLine("All " + passed + " creator support checks passed."); return; }
+        if (args.Contains("--self-update-only")) { await SelfUpdateChecks(); Console.WriteLine("All " + passed + " self-update checks passed."); return; }
+        if (args.Contains("--self-update-helper-only")) { SelfUpdateHelperChecks(); Console.WriteLine("All " + passed + " self-update helper checks passed."); return; }
+        if (args.Length == 2 && args[0] == "--self-update-live") { await SelfUpdateLiveCheck(args[1]); return; }
         if (args.Contains("--publishing-layout-only")) { PublishingLayoutChecks(); Console.WriteLine("All " + passed + " publishing layout checks passed."); return; }
         if (args.Contains("--admin-config-only")) { AdminConfigChecks(); Console.WriteLine("All " + passed + " server config checks passed."); return; }
         if (args.Contains("--admin-security-only")) { AdminConfigSecurityChecks(); Console.WriteLine("All " + passed + " admin security checks passed."); return; }
@@ -60,6 +64,8 @@ internal static partial class Program
         if (args.Contains("--restart-only")) { RestartChecks(); Console.WriteLine("All " + passed + " restart checks passed."); return; }
         if (args.Contains("--editor-only")) { ProfileEditChecks(); Console.WriteLine("All " + passed + " profile editor checks passed."); return; }
         if (args.Contains("--fallback-only")) { await FallbackChecks(); Console.WriteLine("All " + passed + " fallback/log checks passed."); return; }
+        await SelfUpdateChecks();
+        CreatorSupportChecks();
         AdminConfigChecks();
         PublishingLayoutChecks();
         AdminConfigSecurityChecks();

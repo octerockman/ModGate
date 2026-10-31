@@ -1,5 +1,13 @@
 # ModGate player guide
 
+## Support Mod Creators
+
+Open **Support Mod Creators** in the sidebar. **Active profile only** is selected when the page opens; **All profiles** also includes mods stored in your other current profiles. Disabled mods still present in a profile are included. Removed mods and restore-point history are excluded. Use Refresh after changing files outside ModGate.
+
+ModGate stays pinned first. Matching package versions across profiles share one entry. Package-folder PNG icons are used where available, with an initials fallback.
+
+Click an outline star to choose a known Nexus Mods, Thunderstore, Hexium or GitHub mod page. The page opens in your browser, where you may need to sign in. Likes, endorsements and stars are a free way to thank mod creators. ModGate does not submit or verify votes, store a liked state or connect to those accounts. If no page links are known, the popup says so. Escape closes the popup first.
+
 ModGate does most of the work of getting your game ready for a modded Valheim server. Use **Download and review** to download the server's required mods together from supported sources. ModGate checks the requirements, finds packages, reuses matching installed mods, downloads what is needed, and prepares a saved server profile. You review it, install and restart, then join again.
 
 You need ModGate on your computer because the server cannot install mods on your behalf. The server also needs ModGate so it can tell your copy which mods and versions to use. An unmodified Valheim client cannot display ModGate's setup window.
@@ -14,9 +22,21 @@ You need ModGate on your computer because the server cannot install mods on your
    BepInEx/patchers/ValheimModGate/ValheimModGate.Preloader.dll
    ```
 
-3. Start Valheim as usual. Your ModGate version must match the server's; for this release, both sides need **0.4.4**. Keep your existing profiles and configs when upgrading.
+3. Start Valheim as usual. Your ModGate version must match the server's; for this release, both sides need **0.4.7**. Keep your existing profiles and configs when upgrading.
 
-Mod managers can add their own author/package folders below plugins and patchers. Keep using the same external manager profile. ModGate does not install or update BepInEx or update its own connector automatically.
+Mod managers can add their own author/package folders below plugins and patchers. Keep using the same external manager profile. ModGate does not install or update BepInEx.
+
+## Updating ModGate
+
+Install version 0.4.6 manually once. Then open **ModGate → Settings → ModGate updates**. It checks official releases at most once every 12 hours; you can disable launch checks. Early releases are included by default in this alpha and can be excluded in Settings.
+
+Choose **Download … for review**, then **Install … & restart** on the Windows client, or **Install ModGate when Valheim closes**. Downloading alone does not change the installed DLLs. Installation waits for normal shutdown, verifies the official GitHub asset SHA-256 and both DLL versions, and retains backups. Profiles, configs and BepInEx stay in place. A queued update can be cancelled before closing.
+
+If a server uses another connector version, ModGate offers that exact official release. Review an older-version warning before proceeding; downgrading to an older build can remove the updater. Restart and join again after installing.
+
+Automatic relaunch supports Windows. Linux needs `/proc`, `/bin/sh`, `/usr/bin/flock` and `/usr/bin/sha256sum`; close and restart manually. Linked or duplicate ModGate installations need manual attention or an update through the external mod manager.
+
+Wait for `BepInEx/ModGate/self-update-status.txt` before starting again. If updating fails, read `self-update-error.txt` in the same folder. Keep `self-updates/` backups. With Valheim stopped, restore the two backup DLLs together to their original plugin and patcher locations, or manually install the complete release pair.
 
 ## Join a server
 

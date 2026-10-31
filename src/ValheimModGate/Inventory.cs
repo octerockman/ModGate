@@ -178,6 +178,23 @@ namespace ModGate
         }
         public static List<ModEntry> InspectProfilePayload(string path) => InspectFiles(ProfileEditing.PayloadFiles(path).Where(f => Path.GetExtension(f).Equals(".dll", StringComparison.OrdinalIgnoreCase)), false);
         public static List<ProfileEditGroup> ProfileGroups(string root, ProfileCatalog catalog, string slot) => ProfileEditing.Read(root, catalog, slot, InspectProfilePayload);
+        public static List<ModEntry> InspectSupportPayload(string path)
+        {
+            var mods = InspectProfilePayload(path);
+            var boundary = Path.GetDirectoryName(Path.GetFullPath(path))!;
+            foreach (var mod in mods)
+            {
+                mod.Package = GuessPackage(mod.LocalFile, boundary);
+                mod.LocalManifest = LocalManifestReader.Read(mod.LocalFile, boundary);
+                if (mod.Package.Length == 0 && mod.LocalManifest != null)
+                {
+                    var page = CreatorSupport.Page(mod.LocalManifest.Website);
+                    var repository = page?.Host == "Hexium" ? "hexium" : page?.Host == "Thunderstore" ? "thunderstore" : null;
+                    if (repository != null) mod.Package = mod.LocalManifest.ExactPackage(repository) ?? "";
+                }
+            }
+            return mods;
+        }
         private static List<ModEntry> InspectFiles(IEnumerable<string> files, bool rejectConnector)
         {
             var entries = new List<ModEntry>();

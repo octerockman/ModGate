@@ -1,4 +1,10 @@
-# Valheim ModGate 0.4.4
+# Valheim ModGate 0.4.7
+
+## Official connector updates
+
+Settings checks `octerockman/ModGate` GitHub releases through the native HTTPS transport. It requires an official runtime asset with a GitHub SHA-256 digest and matching plugin/preloader assembly identities and versions. It stages the pair under `BepInEx/ModGate/self-updates/`, retains backups, waits for normal process exit, and uses verified replacement with rollback on recoverable failure. The preloader stops a premature launch before loading the world when a queued pair is incomplete. This is not an independent code signature.
+
+Client preferences are `BepInEx/ModGate/self-update-preferences.json`; checks are enabled at most every 12 hours. Installation requires a user action. Early releases default on in this alpha. Server flags `autoUpdateModGate` (default false) and `modGateIncludePrereleases` control the separate connector updater; `autoUpdateOnRestart` must also be true. It checks/stages during startup and applies on the next shutdown. Windows supports install and relaunch; Linux requires sh, /proc, flock and sha256sum, then a manual or panel restart after completion. See the player and server-owner guides for recovery and host timing.
 
 ModGate compares a joining player's loaded mods with the server's current requirements. It prepares four server profiles plus an offline profile, with separate mod configs.
 
@@ -9,7 +15,7 @@ Stop Valheim and the server, then install both included files on the server and 
     BepInEx/plugins/ValheimModGate/ValheimModGate.dll
     BepInEx/patchers/ValheimModGate/ValheimModGate.Preloader.dll
 
-Keep existing configs and profiles. Install both 0.4.4 DLLs on the server and every client (network protocol 6). Older saved profiles remain usable. BepInEx must already be installed; ModGate never installs or updates it. Start through the same installation or mod-manager profile as before.
+Keep existing configs and profiles. Install both 0.4.7 DLLs on the server and every client (network protocol 6). Older saved profiles remain usable. BepInEx must already be installed; ModGate never installs or updates it. Start through the same installation or mod-manager profile as before.
 
 This release prepares the public package and protects ModGate's own author/package folder during profile changes. It retains **Server health** for administrators, **Shift+F6**, gameplay-input blocking, collapsible config files, **Reload configs**, explicit dependency choices, the sidebar and separate Mod details tab, profile checks and targeted repairs, restore points, and support reports. Existing clientOnly, newer-version allowances, server manifest folders, password remembering and isolated server-update transport are retained.
 

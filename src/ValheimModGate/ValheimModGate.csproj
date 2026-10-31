@@ -6,6 +6,7 @@
     <Reference Include="0Harmony"><HintPath>$(BepInExPath)/0Harmony.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Mono.Cecil"><HintPath>$(BepInExPath)/Mono.Cecil.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="$(GameManagedPath)/UnityEngine.UI.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameManagedPath)/UnityEngine.ImageConversionModule.dll"><Private>false</Private></Reference>
     <Reference Include="$(GameManagedPath)/Unity.InputSystem.dll"><Private>false</Private></Reference>
     <Reference Include="$(GameManagedPath)/assembly_valheim.dll;$(GameManagedPath)/assembly_utils.dll"><Private>false</Private><ExternallyResolved>true</ExternallyResolved></Reference>
     <Reference Include="$(GameManagedPath)/UnityEngine.dll;$(GameManagedPath)/UnityEngine.CoreModule.dll;$(GameManagedPath)/UnityEngine.IMGUIModule.dll;$(GameManagedPath)/UnityEngine.TextRenderingModule.dll"><Private>false</Private></Reference>

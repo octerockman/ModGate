@@ -22,6 +22,39 @@ internal static partial class Program
     }
     private static void AdminConfigSecurityChecks()
     {
+        Test("Unix owner-key writes complete interrupted short writes and flush without a managed file-handle wrapper", () =>
+        {
+            var content = System.Text.Encoding.ASCII.GetBytes(new string('a',64) + "\n");
+            using var actual = new MemoryStream(); var writes = 0; var flushes = 0;
+            AdminConfigSecurity.WriteUnixKey(123, content, (fd, pointer, length) =>
+            {
+                Check(fd == 123); if (++writes == 1) return new IntPtr(-1);
+                var count = Math.Min(7, (int)length.ToUInt64()); var chunk = new byte[count];
+                System.Runtime.InteropServices.Marshal.Copy(pointer, chunk, 0, count); actual.Write(chunk); return new IntPtr(count);
+            }, fd => { Check(fd == 123); return ++flushes == 1 ? -1 : 0; }, () => 4);
+            Check(content.SequenceEqual(actual.ToArray()) && writes > 2 && flushes == 2);
+        });
+        Test("Unix owner-key write and flush failures surface instead of reading back an empty key", () =>
+        {
+            var content = System.Text.Encoding.ASCII.GetBytes(new string('a',64)); var flushed = false;
+            Throws<IOException>(() => AdminConfigSecurity.WriteUnixKey(123, content, (_,_,_) => new IntPtr(-1), _ => { flushed = true; return 0; }, () => 13));
+            Check(!flushed);
+            Throws<IOException>(() => AdminConfigSecurity.WriteUnixKey(123, content, (_,_,_) => IntPtr.Zero, _ => 0, () => 0));
+            Throws<IOException>(() => AdminConfigSecurity.WriteUnixKey(123, content, (_,_,length) => new IntPtr((long)length.ToUInt64()), _ => -1, () => 5));
+        });
+        Test("an invalid owner key stays protected while normal server config reconciliation adds self-update settings", () =>
+        {
+            var root = Root(); var keyPath = Put(root, AdminConfigSecurity.OwnerKeyPath, ""); string diagnostic = "";
+            Check(!AdminConfigSecurity.TryEnsureOwnerKey(root, message => diagnostic = message));
+            Check(diagnostic.Contains("Mod-list discovery will continue") && File.ReadAllText(keyPath) == "");
+            var manifestPath = SafePath.Under(root, "config/ModGate/server-mods.json");
+            ServerConfig.Save(manifestPath, root, AutoSetup.Reconcile(new ServerManifest(), Array.Empty<ModEntry>(), Array.Empty<string>()));
+            var manifest = File.ReadAllText(manifestPath);
+            Check(manifest.Contains("\"autoUpdateModGate\": false") && manifest.Contains("\"modGateIncludePrereleases\""));
+            Throws<InvalidDataException>(() => AdminConfigSecurity.ReadOwnerKey(root));
+            File.Move(keyPath, keyPath + ".backup");
+            Check(AdminConfigSecurity.TryEnsureOwnerKey(root, _ => { }) && AdminConfigSecurity.ReadOwnerKey(root).Length == 64 && File.ReadAllText(keyPath + ".backup") == "");
+        });
         Test("owner access key is generated privately once and never included in support exports", () =>
         {
             var root = Root(); var key = AdminConfigSecurity.EnsureOwnerKey(root);

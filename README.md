@@ -96,19 +96,17 @@ Only accept mod downloads from servers you trust: mods run code on your computer
 
 Windows supports automatic relaunch and encrypted password storage. Other launchers/platforms can use normal password entry and the manual next-launch option. Available disk space limits how many profile copies, downloads and restore points you can keep.
 
-Version **0.4.4** is an early release. Automated tests cover the setup and recovery logic; actual rendering, host permissions and mod interactions still need validation in your own environment.
+**Support Mod Creators:** use the sidebar to browse physically installed mods in the active profile or all profiles. ModGate is pinned first. Outline stars open known creator pages; folder PNG icons are used when available. No votes are submitted or verified.
+
+**ModGate updates:** after installing 0.4.6 manually once, open **Settings → ModGate updates** to check official GitHub releases, download for review, and install on closing or install and restart on Windows. Both DLLs are verified and backed up together; profiles, configs and BepInEx are kept. Client launch checks are enabled, but installation requires your choice. Server self-updating is separate and off by default; see the server-owner guide for enabling it and safely stopping/restarting a hosted server.
+
+Version **0.4.7** is an early release. Automated tests cover the setup and recovery logic; actual rendering, host permissions and mod interactions still need validation in your own environment.
 
 ## Help and bug reports
 
 Open **Activity** or **Open setup log** for preparation details. Include the ModGate version, the exact error, and what you were doing when reporting a problem. The panel can create a support report; do not share passwords or your server's admin access key.
 
 [Report a bug or get help on Discord](https://discord.gg/AaVzBfPcYH)
-
-## Support Studio Bascinet
-
-Enjoying the mod? Optional donations help support Studio Bascinet's mod development. Thank you for your support.
-
-[![Donate with PayPal button](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=BUC6767NR59C8)
 
 ## Source and downloads
 

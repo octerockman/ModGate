@@ -51,5 +51,7 @@
     }
   ],
   "autoUpdateOnRestart": false,
-  "autoUpdateAllMods": false
+  "autoUpdateAllMods": false,
+  "autoUpdateModGate": false,
+  "modGateIncludePrereleases": true
 }

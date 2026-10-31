@@ -18,7 +18,7 @@ You choose how your server works: which mods are required or optional, whether p
 2. Start the server once. ModGate scans loaded BepInEx plugins and creates its setup under `BepInEx/config/ModGate/`.
 3. Stop the server and review `server-mods.json`. Confirm the server name, mod classifications, download mappings, and rules for extra or newer client mods. The included `server-mods.example.json` explains the shape; keep your generated real entries rather than replacing them with the examples.
 4. Restart and check `lookup-report.json` for unresolved downloads. Background lookup may still be running after startup; allow it to finish and reconnect before testing a missing mapping again.
-5. Give players ModGate **0.4.4** and test a join from a separate client. When upgrading ModGate, update both DLLs on the server and every client. Retain existing configs and profiles.
+5. Give players ModGate **0.4.7** and test a join from a separate client. When upgrading ModGate, update both DLLs on the server and every client. Retain existing configs and profiles.
 
 `server-mods.json` is the active owner-editable list. The older `server-mods.discovered.json` is unused. ModGate also creates `server-only.txt` for exclusions, `server-id.txt` for the server's identity, and `admin-access.key` for remote administrator access. Keep the server identity when upgrading so existing profiles continue to recognize it.
 
@@ -71,7 +71,31 @@ BepInEx/config/ModGate/admin-access.key
 
 Share that code privately with trusted administrators. Server saves queue for restart; **Reload configs** reloads eligible current `.cfg` files where the mod supports it. ModGate's server-policy JSON still requires a restart.
 
+**Linux key recovery:** version 0.4.6 fixes key-file creation on Unity Mono. If an earlier build left an invalid or empty `admin-access.key`, stop the server, install both new DLLs, rename the invalid key to `admin-access.key.backup`, then start the server. A new private key is generated; administrators must enter that replacement key. Existing valid keys are retained. A key failure now disables admin config/health access while allowing normal mod-list discovery and config refresh to continue. Do not share the key in logs or support reports.
+
 **Server health** uses the same administrator access. It shows server-process CPU and memory, connection round trip/jitter, traffic, players, session uptime and update timing, with optional two-second refresh. CPU 100% means one logical core. Unavailable readings are marked; GPU and temperature data are not collected.
+
+## Updating ModGate itself
+
+Install the 0.4.6 DLL pair manually once. Later builds can update from the official `octerockman/ModGate` GitHub releases. This is separate from updating ordinary server mods and stays **off by default**.
+
+To opt in, set these top-level fields in `BepInEx/config/ModGate/server-mods.json`:
+
+```json
+"autoUpdateOnRestart": true,
+"autoUpdateModGate": true,
+"modGateIncludePrereleases": true
+```
+
+Keep `modGateIncludePrereleases` true for alpha releases, or set false for stable releases only. On startup, ModGate checks and stages a newer official version while the server keeps running. It applies the verified plugin/preloader pair after the **next normal shutdown**; it never forces a world to stop. Stop the server, wait for `BepInEx/ModGate/self-update-status.txt`, then start it. A hosting panel that immediately starts during replacement may be stopped by the preloader guard before loading the world; start it again after the helper finishes.
+
+Windows uses its built-in PowerShell helper. Linux requires `/proc`, `/bin/sh`, `/usr/bin/flock` and `/usr/bin/sha256sum`. If your host blocks background helpers, update manually. Startup only queues for the next shutdown; it does not replace the server DLLs before that same startup.
+
+Clients can find the server's exact official ModGate version through the mismatch prompt and Settings. Publish the runtime ZIP to the official GitHub release before using that version on a public server. An unpublished version cannot be downloaded automatically. Network failures leave the installed version in place.
+
+Only the two ModGate DLLs are replaced. BepInEx, other mods, configs and profiles are kept. Release ZIP SHA-256 and assembly identities/versions are checked; no arbitrary server-supplied update URL is used. These checks establish consistency with the official GitHub asset, not a separate code signature.
+
+On failure, retain `BepInEx/ModGate/self-updates/` and read `self-update-error.txt`. With the server fully stopped, restore both `backup-*.dll` files from the same update folder to the original plugin/patcher locations, or manually reinstall the complete DLL pair. Do not restore just one component. Duplicate or linked connector installations need manual attention; the updater does not remove duplicates.
 
 For setup failures, check `lookup-report.json`, `server-update-report.json`, the BepInEx log, and the player's Activity/setup log. Use [the ModGate support Discord](https://discord.gg/AaVzBfPcYH) for bug reports. Support ZIP creation does not send anything automatically; review a report before sharing it.
 

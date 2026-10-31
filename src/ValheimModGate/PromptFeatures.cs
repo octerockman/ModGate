@@ -41,6 +41,7 @@ namespace ModGate
         }
         private void HandleEscape()
         {
+            if (creatorPopup != null) { creatorPopup = null; return; }
             if (pendingNavigation != null) { pendingNavigation = null; return; }
             if (confirmAction != null) { confirmAction = null; return; }
             if (deleteSlot != null) { deleteSlot = null; return; }
@@ -113,6 +114,7 @@ namespace ModGate
         }
         private void DrawFeatureContent()
         {
+            if (featurePage == "Creators") { DrawCreators(); return; }
             if (featurePage == "ServerHealth") { DrawServerHealth(); return; }
             if (featureTask != null) { Label(progress); Label("Your active setup stays in place while this operation runs."); return; }
             if (featurePage == "Server") { DrawServerConfigs(); if (progress.Length > 0) Label(progress); }
@@ -163,6 +165,7 @@ namespace ModGate
         }
         private bool DrawFeaturePrimary(Rect area)
         {
+            if (featurePage == "Creators") { if (featureTask != null && Button(area, "Cancel reading mods")) featureCancellation?.Cancel(); return true; }
             if (ServerHealthSelected) return true;
             if (featureTask != null) { if (Button(area, featurePage == "Server" ? "Cancel waiting for server" : "Cancel profile operation")) featureCancellation?.Cancel(); return true; }
             if (featurePage == "Server") { GUI.enabled = RemoteDirty && !Busy; if (Button(area, "Save server changes")) SaveRemoteConfig(); GUI.enabled = true; return true; }

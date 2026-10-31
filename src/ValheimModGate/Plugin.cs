@@ -45,6 +45,7 @@ namespace ModGate
             Logger.LogInfo("ModGate " + Constants.Version + " ready. Server policy: " + Path.Combine(Paths.ConfigPath, "ModGate", "server-mods.json"));
             try { RestartLauncher.ConfirmCurrent(Paths.BepInExRootPath); }
             catch (Exception failure) { Logger.LogWarning("Restart confirmation failed: " + failure.Message); }
+            StartSelfUpdates();
         }
 
         private void RequestRestart()
@@ -90,7 +91,7 @@ namespace ModGate
         private void OnGUI() { DrawPasswordMemory(); prompt.Draw(); }
         private void LateUpdate() => prompt.EnsureCursor();
         private void OnApplicationFocus(bool focused) { if (focused) prompt?.EnsureCursor(); }
-        private void OnDestroy() { prompt?.Dispose(); harmony?.UnpatchSelf(); }
+        private void OnDestroy() { serverSelfUpdateCancellation?.Cancel(); serverSelfUpdateCancellation?.Dispose(); prompt?.Dispose(); harmony?.UnpatchSelf(); }
 
         [HarmonyPatch(typeof(GameCamera), nameof(GameCamera.UpdateMouseCapture)), HarmonyPrefix, HarmonyPriority(Priority.First)]
         private static bool KeepPromptMouseAvailable()
@@ -170,7 +171,7 @@ namespace ModGate
             Instance.Logger.LogInfo("HTTP libraries after Valheim server startup: " + NetworkAssemblyInfo.LoadedHttp());
             try
             {
-                AdminConfigSecurity.EnsureOwnerKey(Paths.BepInExRootPath);
+                AdminConfigSecurity.TryEnsureOwnerKey(Paths.BepInExRootPath, message => Instance.Logger.LogError(message));
                 var policy = Inventory.ServerPolicy();
                 if (policy.Error.Length > 0) Instance.Logger.LogWarning(policy.Error);
             }
@@ -185,6 +186,14 @@ namespace ModGate
                 var policy = Json.Read<Policy>(json);
                 if (policy.Error == null || policy.Nonce == null || !System.Guid.TryParseExact(policy.Nonce, "N", out _)) throw new InvalidDataException("Invalid server response.");
                 if (policy.Error.Length > 0) { prompt.ShowError(policy.Error); rpc.GetSocket().Close(); returnToMenuRequested = true; return; }
+                var connectorVersion = SelfUpdateSource.RequiredByServer(policy);
+                if (connectorVersion != null)
+                {
+                    rpc.GetSocket().Close();
+                    prompt.ShowConnectorUpdate((policy.ServerName ?? "Valheim server").Substring(0, Math.Min(200, (policy.ServerName ?? "Valheim server").Length)), connectorVersion);
+                    returnToMenuRequested = true;
+                    return;
+                }
                 PolicyEngine.ValidatePolicy(policy);
                 if (!System.Guid.TryParseExact(policy.ServerId, "N", out _)) throw new InvalidDataException("The server needs a valid ModGate server identity.");
                 if (!ReferenceEquals(adminServer, rpc) || adminNonce != policy.Nonce) prompt.ForgetServerConfigAccess();

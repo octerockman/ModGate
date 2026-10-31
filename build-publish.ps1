@@ -69,7 +69,7 @@ foreach ($modGateItem in $modGatePackageFiles.GetEnumerator()) {
     }
 }
 $modGateExample = [IO.File]::ReadAllText((Join-Path $modGateRoot 'examples/server-mods.example.json'), $modGateUtf8) | ConvertFrom-Json
-if ($modGateExample.autoUpdateOnRestart -ne $false -or $modGateExample.autoUpdateAllMods -ne $false) { throw 'Server updating must stay off by default.' }
+if ($modGateExample.autoUpdateOnRestart -ne $false -or $modGateExample.autoUpdateAllMods -ne $false -or $modGateExample.autoUpdateModGate -ne $false) { throw 'Server updating must stay off by default.' }
 
 $modGateOutput = Join-Path $modGateRoot "dist/publishing/$modGateVersion"
 New-Item -ItemType Directory -Force -Path $modGateOutput | Out-Null

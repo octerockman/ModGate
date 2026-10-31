@@ -31,7 +31,9 @@ if (-not $SkipTests) {
     & dotnet run --project (Join-Path $modGateProjectRoot 'inventory-tests/Inventory.Tests.csproj') -c Release @modGateProperties @modGateRestoreOption
     if ($LASTEXITCODE -ne 0) { throw 'Inventory verification failed.' }
 }
-$modGateDist = Join-Path $modGateProjectRoot 'dist/0.4.4'
+$modGateBuildMetadata = [xml](Get-Content -LiteralPath (Join-Path $modGateProjectRoot 'Directory.Build.props') -Raw)
+$modGateBuildVersion = [string]$modGateBuildMetadata.Project.PropertyGroup.Version
+$modGateDist = Join-Path $modGateProjectRoot "dist/$modGateBuildVersion"
 $modGatePluginDestination = Join-Path $modGateDist 'BepInEx/plugins/ValheimModGate'
 $modGatePatcherDestination = Join-Path $modGateDist 'BepInEx/patchers/ValheimModGate'
 New-Item -ItemType Directory -Force -Path $modGatePluginDestination, $modGatePatcherDestination | Out-Null
@@ -46,6 +48,6 @@ foreach ($modGateGuide in @('PLAYER-GUIDE.md', 'SERVER-OWNER-GUIDE.md', 'TECHNIC
     Copy-Item -LiteralPath (Join-Path $modGateProjectRoot "docs/$modGateGuide") -Destination $modGateDocsDestination -Force
 }
 Copy-Item -LiteralPath (Join-Path $modGateProjectRoot 'publishing/CHANGELOG.md') -Destination $modGateDist -Force
-$modGateZip = Join-Path $modGateDist 'ValheimModGate-0.4.4.zip'
+$modGateZip = Join-Path $modGateDist "ValheimModGate-$modGateBuildVersion.zip"
 Compress-Archive -Path (Join-Path $modGateDist 'BepInEx'), (Join-Path $modGateDist 'README.md'), (Join-Path $modGateDist 'LICENSE'), (Join-Path $modGateDist 'server-mods.example.json'), $modGateDocsDestination, (Join-Path $modGateDist 'CHANGELOG.md') -DestinationPath $modGateZip -Force
 Write-Output "Install package: $modGateZip"

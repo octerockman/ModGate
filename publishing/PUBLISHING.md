@@ -1,10 +1,10 @@
-# Publishing ModGate 0.4.4
+# Publishing ModGate 0.4.7
 
 The release is prepared locally. No website upload or Discord announcement is performed by the build scripts.
 
 ## Files to use
 
-- **ValheimModGate-0.4.4-publish.zip** is the website upload package. Keep it zipped.
+- **ValheimModGate-0.4.7-publish.zip** is the website upload package. Keep it zipped.
 - **README.md** at the project root is the public description displayed on the mod page.
 - **publishing/manifest.json** contains the short description, package name, version, support link and loader dependency.
 - **publishing/icon.png** is the approved 256×256 square cover with the download tagline. **icon.svg** retains the original gateway artwork; the cover compositor and 1024×1024 master are retained in images/ModGate-Square-Cover-v2/.
@@ -27,14 +27,14 @@ Omit **-NoRestore** if this checkout has not restored its build dependencies. On
 ./build-publish.ps1 -UseExistingBuild
 ```
 
-Output is under **dist/publishing/0.4.4/**. The script checks the manifest, description length, icon size, DLL identities/versions, explicit file list and the archived file hashes. **SHA256SUMS.txt** records the ZIP hash. It does not replace a live join/restart check or the website's own validation.
+Output is under **dist/publishing/0.4.7/**. The script checks the manifest, description length, icon size, DLL identities/versions, explicit file list and the archived file hashes. **SHA256SUMS.txt** records the ZIP hash. It does not replace a live join/restart check or the website's own validation.
 
 ## Upload settings
 
 | Setting | Use |
 | --- | --- |
 | Package name | **ModGate** |
-| Version | **0.4.4** |
+| Version | **0.4.7** |
 | Game/community | **Valheim** |
 | Install location/side | **Both client and server** |
 | Team | Your existing publishing team, selected on the upload page. The team name is not a manifest field. |

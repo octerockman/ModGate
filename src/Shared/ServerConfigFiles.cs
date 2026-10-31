@@ -280,7 +280,7 @@ namespace ModGate
                 {
                     if (element.Attribute("type")?.Value != "object" || element.Elements().Any(e => !allowed.Contains(e.Name.LocalName)) || element.Elements().GroupBy(e => e.Name.LocalName).Any(g => g.Count() > 1)) throw new InvalidDataException("Server policy contains an unknown or duplicate field.");
                 }
-                Fields(root, new[] { "schema", "serverName", "allowExtraClientMods", "allowNewerClientVersions", "autoUpdateOnRestart", "autoUpdateAllMods", "mods" });
+                Fields(root, new[] { "schema", "serverName", "allowExtraClientMods", "allowNewerClientVersions", "autoUpdateOnRestart", "autoUpdateAllMods", "autoUpdateModGate", "modGateIncludePrereleases", "mods" });
                 foreach (var mod in root.Element("mods")?.Elements() ?? Enumerable.Empty<XElement>())
                 {
                     Fields(mod, new[] { "guid", "name", "version", "side", "package", "downloadUrl", "nexusUrl", "automatic", "autoUpdate", "allowNewerVersion", "manifestSource", "dependencies" });

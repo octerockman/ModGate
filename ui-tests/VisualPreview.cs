@@ -19,7 +19,7 @@ internal static class VisualPreview
         var index = Array.IndexOf(args, "--visual-preview");
         var output = Path.GetFullPath(index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal) ? args[index + 1] : "artifacts/ui-preview");
         Directory.CreateDirectory(output);
-        foreach (var surface in new[] { "mods", "dependencies", "profiles", "mod-details", "mod-detail", "configs", "server-configs", "server-health", "server-health-narrow", "server-health-history", "download" })
+        foreach (var surface in new[] { "mods", "dependencies", "profiles", "mod-details", "mod-detail", "configs", "server-configs", "server-health", "server-health-narrow", "server-health-history", "download", "creators", "creators-narrow", "creator-popup", "creator-popup-narrow" })
         {
             using var fixture = surface.EndsWith("-narrow", StringComparison.Ordinal) ? Create(surface, 640, 900) : Create(surface);
             Capture(fixture.Prompt);
@@ -63,6 +63,12 @@ internal static class VisualPreview
         GUILayout.ScrollDepth = 0; GUILayout.AreaDepth = 0; ZInput.instance = new object(); ZInput.Pressed.Clear(); ZInput.Released.Clear(); ZInput.Held.Clear();
         Event.current = new Event { type = EventType.Repaint, mousePosition = new(-100, -100) };
         UnityEngine.EventSystems.EventSystem.current = null;
+        if (surface.StartsWith("creators", StringComparison.Ordinal) || surface.StartsWith("creator-popup", StringComparison.Ordinal))
+        {
+            fixture.Prompt = CreatorSupportUiChecks.Fixture();
+            if (surface.StartsWith("creator-popup", StringComparison.Ordinal)) { GUI.Click = "Support: bascinet:4412"; fixture.Prompt.Draw(); GUI.Click = null; }
+            return fixture;
+        }
         var required = new ModEntry { Guid = "org.bepinex.plugins.valheim_plus", Name = "Valheim Plus", Version = "0.9.16", Side = "required", Package = "Grantapher-ValheimPlus_Grantapher_Temporary-0.9.16" };
         var map = new ModEntry { Guid = "org.example.cartography", Name = "Cartography", Version = "2.4.1", Side = "required", Package = "Example-Cartography-2.4.1" };
         var portal = new ModEntry { Guid = "org.example.teleport", Name = "TeleportEverything", Version = "2.8.0", Side = "required", Package = "Example-TeleportEverything-2.8.0", Dependencies = new() { new PluginDependency { Guid = "org.example.teleportboats", Optional = true } } };

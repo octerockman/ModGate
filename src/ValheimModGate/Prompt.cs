@@ -59,6 +59,7 @@ namespace ModGate
         public Prompt(Action<string> logger, Action close, Action quit, Action? restart = null) { log = logger; returnToMenu = close; quitGame = quit; restartGame = restart; }
         public void ShowError(string message)
         {
+            creatorPopup = null;
             if (task != null || scheduled) return;
             error = message; policy = null; manager = false; visible = true; deleteSlot = null; editingSlot = null; preparedEdit = null;
             setupLog.Start("Join/setup error"); setupLog.Write(message);
@@ -71,7 +72,7 @@ namespace ModGate
             if (task != null || scheduled) return;
             settingsPage = false; featurePage = ""; configDocument = null; optionalExpanded = true; navigationTab = "Mods"; search = ""; workflow = "Choose"; editingSlot = null; preparedEdit = null; setupLog.Start("Join " + serverPolicy.ServerName);
             setupLog.Write("Comparison: " + comparison.Missing.Count + " missing, " + comparison.WrongVersion.Count + " version changes, " + comparison.Extra.Count + " extra mods.");
-            policy = serverPolicy; difference = comparison; local = inventory; selectedMods.Clear(); configSource = "active"; deleteSlot = null;
+            creatorPopup = null; policy = serverPolicy; difference = comparison; local = inventory; selectedMods.Clear(); configSource = "active"; deleteSlot = null;
             ProfileConfigs.RecordActive(Paths.BepInExRootPath, inventory);
             serverKey = key; catalog = Profiles.Load(Paths.BepInExRootPath);
             var savedServer = catalog.Servers.FirstOrDefault(s => s.ServerKey == key || !string.IsNullOrWhiteSpace(serverPolicy.ServerId) && s.ServerPolicy?.ServerId == serverPolicy.ServerId);
@@ -91,6 +92,7 @@ namespace ModGate
         }
         public void Update()
         {
+            UpdateSelfUpdates();
             EnsureCursor();
             ReadPointer();
             UpdateFeatures();
@@ -556,7 +558,7 @@ namespace ModGate
                 try { DownloadCache.DiscardStage(Paths.BepInExRootPath, prepared.Id); }
                 catch (Exception failure) { log("Deferred staging cleanup: " + failure.Message); }
             }
-            cancellation?.Cancel(); visible = false; manager = false; confirmRemoval = false; deleteSlot = null;
+            creatorPopup = null; cancellation?.Cancel(); visible = false; manager = false; confirmRemoval = false; deleteSlot = null;
             prepared = null; preparedProfile = null; editingSlot = null; preparedEdit = null;
             pointerPress = null; pointerClick = null; RestoreMenuInput();
             GUIUtility.hotControl = 0; GUIUtility.keyboardControl = 0;
@@ -657,6 +659,10 @@ namespace ModGate
         }
         public void Dispose()
         {
+            ClearCreatorIcons();
+            if (creatorStar != null) UnityEngine.Object.Destroy(creatorStar);
+            if (creatorScrim != null) UnityEngine.Object.Destroy(creatorScrim);
+            selfUpdateCancellation?.Cancel();
             ForgetServerHealth();
             featureCancellation?.Cancel();
             cancellation?.Cancel(); visible = false; RestoreMenuInput(); ReleaseCursor();

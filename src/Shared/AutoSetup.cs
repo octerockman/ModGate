@@ -69,7 +69,7 @@ namespace ModGate
             if (settings.Schema != Constants.ManifestSchema) throw new System.IO.InvalidDataException("Unsupported server-mods.json schema.");
             var excluded = new HashSet<string>(exclusions.Select(s => s.Trim()).Where(s => s.Length > 0 && !s.StartsWith("#")), StringComparer.OrdinalIgnoreCase);
             var previous = settings.Mods.ToDictionary(m => m.Guid, StringComparer.Ordinal);
-            var result = new ServerManifest { Schema = Constants.ManifestSchema, ServerName = settings.ServerName, AllowExtraClientMods = settings.AllowExtraClientMods, AllowNewerClientVersions = settings.AllowNewerClientVersions, AutoUpdateOnRestart = settings.AutoUpdateOnRestart, AutoUpdateAllMods = settings.AutoUpdateAllMods };
+            var result = new ServerManifest { Schema = Constants.ManifestSchema, ServerName = settings.ServerName, AllowExtraClientMods = settings.AllowExtraClientMods, AllowNewerClientVersions = settings.AllowNewerClientVersions, AutoUpdateOnRestart = settings.AutoUpdateOnRestart, AutoUpdateAllMods = settings.AutoUpdateAllMods, AutoUpdateModGate = settings.AutoUpdateModGate, ModGateIncludePrereleases = settings.ModGateIncludePrereleases };
             foreach (var mod in loaded.Where(m => m.Guid != Constants.Guid))
             {
                 previous.TryGetValue(mod.Guid, out var old);

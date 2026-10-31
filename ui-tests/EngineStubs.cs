@@ -44,12 +44,24 @@ namespace UnityEngine
     }
     public sealed class Texture2D : Object
     {
-        public readonly int width, height; internal readonly Color[] Pixels;
+        public int width, height; internal Color[] Pixels;
         public Texture2D(int width, int height, TextureFormat format, bool mipChain) { this.width = width; this.height = height; Pixels = new Color[width * height]; }
         public Texture2D(int width, int height) : this(width, height, TextureFormat.RGBA32, false) { }
         public void SetPixel(int x, int y, Color color) { Pixels[y * width + x] = color; }
         public void SetPixels(Color[] colors) { Array.Copy(colors, Pixels, Pixels.Length); }
+        public Color[] GetPixels() => Pixels.ToArray();
         public void Apply() { }
+    }
+    public static class ImageConversion
+    {
+        public static bool Reject;
+        public static bool LoadImage(Texture2D texture, byte[] bytes, bool markNonReadable)
+        {
+            if (Reject || bytes.Length < 33) return false;
+            texture.width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+            texture.height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+            texture.Pixels = Enumerable.Repeat(new Color(.35f,.5f,.4f,1),texture.width * texture.height).ToArray(); return true;
+        }
     }
     public sealed class Font : Object
     {
@@ -244,6 +256,8 @@ namespace ModGate
         public static List<ModEntry> Loaded() => Current;
         public static List<ProfileEditGroup> ProfileGroups(string root, ProfileCatalog catalog, string slot) => Json.CloneLocal(Groups);
         public static List<ModEntry> InspectProfilePayload(string path) => new();
+        public static Func<string, List<ModEntry>>? SupportInspect = null;
+        public static List<ModEntry> InspectSupportPayload(string path) => SupportInspect?.Invoke(path) ?? new();
         public static void SaveConfigFiles() { }
         public static List<ModEntry> InspectStaged(string stage) => new();
         public static List<ModEntry> CompleteProfileProposal(string root, Policy policy, PendingInstall install, bool allowIncomplete = false, Action<string>? warn = null) => new();

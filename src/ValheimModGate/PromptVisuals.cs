@@ -109,7 +109,7 @@ namespace ModGate
         }
         private bool Action(Rect area, string label, string kind = "secondary", bool selected = false)
         {
-            InitializeVisuals(); var enabled = GUI.enabled; var style = ButtonStyle(kind, selected);
+            InitializeVisuals(); var outerEnabled = GUI.enabled; var enabled = outerEnabled && (creatorPopup == null || drawingCreatorPopup); GUI.enabled = enabled; var style = ButtonStyle(kind, selected);
             var clicked = GUI.Button(area, label, style); if (clicked) { pointerClick = null; pointerPress = null; }
             else clicked = PointerClicked(area);
             var display = Regex.Replace(label, @"\s+\((offline|server-[1-4])\)$", "");
@@ -123,7 +123,7 @@ namespace ModGate
             if (tone == "dark") labelStyle.normal.textColor = new Color(.114f, .129f, .102f, 1);
             GUI.enabled = true;
             GUI.Label(new Rect(area.x + 12, area.y, Mathf.Max(1, area.width - 24), area.height), display, labelStyle);
-            labelStyle.alignment = old; GUI.enabled = enabled;
+            labelStyle.alignment = old; GUI.enabled = outerEnabled;
             if (kind == "tab" && selected) GUI.DrawTexture(new Rect(area.x + 12, area.y + area.height - 2, area.width - 24, 2), goldBackground!);
             return clicked;
         }

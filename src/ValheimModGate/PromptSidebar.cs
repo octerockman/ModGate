@@ -23,15 +23,15 @@ namespace ModGate
             InitializeVisuals();
             headingStyle = TextStyle("title", "ink"); captionStyle = TextStyle("small", "muted"); panelStyle = cardBox;
         }
-        private bool WorkflowBusy => task != null || featureTask != null || scheduled || Profiles.Pending(Paths.BepInExRootPath);
+        private bool WorkflowBusy => task != null || featureTask != null || SelfUpdateBusy || SelfUpdateQueued || scheduled || Profiles.Pending(Paths.BepInExRootPath);
         private bool Busy => WorkflowBusy || ServerHealthRequestActive;
         private string CurrentSlot => editingSlot ?? (!manager && targetSlot.Length > 0 ? targetSlot : catalog.Active);
         private void DrawWindow(float width, float height)
         {
             InitializeShell();
-            var sidebar = width >= 850 && height >= 600 ? 200f : 0f;
+            var sidebar = width >= 850 && height >= 680 ? 200f : 0f;
             var left = sidebar + 28; contentWidth = Mathf.Max(1, width - left - 28);
-            var showProfileTabs = !settingsPage && featurePage != "Server" && (!(manager && editingSlot == null) || ServerHealthSelected);
+            var showProfileTabs = !settingsPage && featurePage != "Server" && featurePage != "Creators" && (!(manager && editingSlot == null) || ServerHealthSelected);
             var narrowServerLinks = ServerConfigAvailable?.Invoke() == true && !showProfileTabs;
             GUI.DrawTexture(new Rect(0, 0, width, 84), panelBackground!);
             LabelAt(new Rect(28, 17, width - 180, 34), "ModGate", "title");
@@ -41,12 +41,13 @@ namespace ModGate
             if (sidebar > 0) DrawSidebar(sidebar, height);
             else
             {
-                var compact = contentWidth < 430; var navWidth = compact ? (contentWidth - 8) / 2 : 96;
+                var compact = contentWidth < 620; var navWidth = compact ? (contentWidth - 8) / 2 : 96;
                 GUI.enabled = !WorkflowBusy;
-                if (Action(new Rect(left, 96, navWidth, 34), "Profiles", "nav", manager && editingSlot == null && !settingsPage && !ServerHealthSelected)) RequestNavigation(OpenManager);
+                if (Action(new Rect(left, 96, navWidth, 34), "Profiles", "nav", manager && editingSlot == null && !settingsPage && featurePage.Length == 0 && !ServerHealthSelected)) RequestNavigation(OpenManager);
                 if (Action(new Rect(left + navWidth + 8, 96, navWidth, 34), "Settings", "nav", settingsPage)) RequestNavigation(() => { settingsPage = true; featurePage = ""; });
+                if (Action(new Rect(compact ? left : left + 208, compact ? 138 : 96, compact ? navWidth : 196, 34), "Support Mod Creators", "nav", featurePage == "Creators")) RequestNavigation(OpenCreators);
                 GUI.enabled = true;
-                if (Action(new Rect(compact ? left : width - 178, compact ? 138 : 96, compact ? contentWidth : 150, 34), "Report a bug ↗", "quiet")) OpenBugReport();
+                if (Action(new Rect(compact ? left + navWidth + 8 : width - 178, compact ? 138 : 96, compact ? navWidth : 150, 34), "Report a bug ↗", "quiet")) OpenBugReport();
                 if (narrowServerLinks)
                 {
                     var linkTop = compact ? 180 : 138; var half = (contentWidth - 8) / 2;
@@ -56,9 +57,9 @@ namespace ModGate
                     GUI.enabled = true;
                 }
             }
-            var top = sidebar > 0 ? 107f : 150f + (contentWidth < 430 ? 42 : 0) + (narrowServerLinks ? 42 : 0);
-            var context = ServerHealthSelected && !settingsPage ? "Connected server" : featurePage == "Server" ? "Server configs" : settingsPage ? "Settings" : manager && editingSlot == null ? "Your profiles" : editingSlot != null ? ProfileName(editingSlot) : policy?.ServerName ?? "Unable to join this server";
-            var hasProfileActions = !settingsPage && !ServerHealthSelected && featurePage != "Server" && (editingSlot != null || !manager && policy != null);
+            var top = sidebar > 0 ? 107f : 150f + (contentWidth < 620 ? 42 : 0) + (narrowServerLinks ? 42 : 0);
+            var context = featurePage == "Creators" ? "Support Mod Creators" : ServerHealthSelected && !settingsPage ? "Connected server" : featurePage == "Server" ? "Server configs" : settingsPage ? "Settings" : manager && editingSlot == null ? "Your profiles" : editingSlot != null ? ProfileName(editingSlot) : policy?.ServerName ?? "Unable to join this server";
+            var hasProfileActions = !settingsPage && !ServerHealthSelected && featurePage != "Server" && featurePage != "Creators" && (editingSlot != null || !manager && policy != null);
             LabelAt(new Rect(left, top, Mathf.Max(1, contentWidth - (hasProfileActions ? 268 : 0)), 40), context, "title");
             if (hasProfileActions)
             {
@@ -67,7 +68,7 @@ namespace ModGate
                 if (Action(new Rect(left + contentWidth - 98, top, 98, 38), "Restore…")) RequestNavigation(() => OpenHistory(CurrentSlot));
                 GUI.enabled = true;
             }
-            var subtitle = ServerHealthSelected && !settingsPage ? "Server process, connection and main-loop measurements. Admin access is required." : featurePage == "Server" ? "Edit the connected server’s settings. Admin access is required." : settingsPage ? "Your preferences across every profile." : manager && editingSlot == null ? "A separate setup for every server. Your settings stay with it." : scheduled ? "Your changes are saved. Restart to apply this profile." : !manager ? "Choose your mods, then prepare this server’s profile." : "Manage the mods and settings saved in this profile.";
+            var subtitle = featurePage == "Creators" ? "A little appreciation goes a long way." : ServerHealthSelected && !settingsPage ? "Server process, connection and main-loop measurements. Admin access is required." : featurePage == "Server" ? "Edit the connected server’s settings. Admin access is required." : settingsPage ? "Your preferences across every profile." : manager && editingSlot == null ? "A separate setup for every server. Your settings stay with it." : scheduled ? "Your changes are saved. Restart to apply this profile." : !manager ? "Choose your mods, then prepare this server’s profile." : "Manage the mods and settings saved in this profile.";
             var subtitleHeight = contentWidth < 620 ? 44 : 24;
             if (ServerHealthSelected) HealthLabel(new Rect(left, top + 46, contentWidth, subtitleHeight), subtitle, "body", "muted");
             else LabelAt(new Rect(left, top + 46, contentWidth, subtitleHeight), subtitle, "body", "muted");
@@ -105,6 +106,7 @@ namespace ModGate
             catch (Exception failure) when (!(failure is ExitGUIException)) { error = "Unable to display these details: " + failure.Message; log(error); }
             finally { GUILayout.EndArea(); }
             GUI.enabled = true; DrawFooter(left, contentWidth, height);
+            DrawCreatorPopup(width, height);
         }
         private void DrawSidebar(float width, float height)
         {
@@ -113,9 +115,10 @@ namespace ModGate
             GUI.enabled = !WorkflowBusy;
             if (Action(new Rect(12, 106, width - 24, 42), "Profiles", "nav", manager && editingSlot == null && !settingsPage && featurePage.Length == 0 && !ServerHealthSelected)) RequestNavigation(OpenManager);
             if (Action(new Rect(12, 155, width - 24, 42), "Settings", "nav", settingsPage)) RequestNavigation(() => { settingsPage = true; featurePage = ""; scroll = Vector2.zero; });
-            if (ServerConfigAvailable?.Invoke() == true && Action(new Rect(12, 204, width - 24, 38), "Server configs", "nav", featurePage == "Server")) RequestNavigation(OpenServerConfigs);
-            if (ServerConfigAvailable?.Invoke() == true && Action(new Rect(12, 246, width - 24, 38), "Server health", "nav", ServerHealthSelected)) RequestNavigation(OpenServerHealth);
-            var profileTop = ServerConfigAvailable?.Invoke() == true ? 304f : 254f;
+            if (Action(new Rect(12, 204, width - 24, 42), "Support Mod Creators", "nav", featurePage == "Creators")) RequestNavigation(OpenCreators);
+            if (ServerConfigAvailable?.Invoke() == true && Action(new Rect(12, 253, width - 24, 38), "Server configs", "nav", featurePage == "Server")) RequestNavigation(OpenServerConfigs);
+            if (ServerConfigAvailable?.Invoke() == true && Action(new Rect(12, 295, width - 24, 38), "Server health", "nav", ServerHealthSelected)) RequestNavigation(OpenServerHealth);
+            var profileTop = ServerConfigAvailable?.Invoke() == true ? 353f : 286f;
             LabelAt(new Rect(24, profileTop, width - 40, 24), "YOUR PROFILES", "small", "muted");
             var slots = new[] { "offline", "server-1", "server-2", "server-3", "server-4" }.Where(s => s == "offline" || catalog.Servers.Any(p => p.Slot == s)).ToArray();
             var y = profileTop + 36; var step = Mathf.Min(58, Mathf.Max(26, (height - 142 - y) / slots.Length));

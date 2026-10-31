@@ -13,6 +13,11 @@ namespace ModGate
     {
         internal const string OwnerKeyPath = "config/ModGate/admin-access.key";
         private static readonly object KeyGate = new object();
+        internal static bool TryEnsureOwnerKey(string root, Action<string> report)
+        {
+            try { EnsureOwnerKey(root); return true; }
+            catch (Exception error) { report("Admin config/health access is unavailable: " + error.Message + " Mod-list discovery will continue. With the server stopped, inspect config/ModGate/admin-access.key; preserve an invalid file as a backup before regenerating it."); return false; }
+        }
         public static string EnsureOwnerKey(string root)
         {
             lock (KeyGate)
@@ -28,9 +33,9 @@ namespace ModGate
                     var content = Encoding.ASCII.GetBytes(key + Environment.NewLine);
                     try
                     {
-                        using (var stream = CreateOwnerFile(path)) { stream.Write(content, 0, content.Length); stream.Flush(); }
+                        WriteOwnerFile(path, content);
                     }
-                    catch (IOException) when (File.Exists(path)) { return ReadOwnerKey(root); }
+                    catch (OwnerKeyExistsException) { return ReadOwnerKey(root); }
                     finally { Array.Clear(content, 0, content.Length); }
                     return key;
                 }
@@ -95,7 +100,50 @@ namespace ModGate
         private static int Digit(char value) => value >= '0' && value <= '9' ? value - '0' : value >= 'a' && value <= 'f' ? value - 'a' + 10 : value >= 'A' && value <= 'F' ? value - 'A' + 10 : -1;
 
         // Create with private permissions from the first open, rather than exposing a key until chmod runs.
-        private static FileStream CreateOwnerFile(string path)
+        private sealed class OwnerKeyExistsException : IOException { }
+        private static void WriteOwnerFile(string path, byte[] content)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                using (var stream = CreateWindowsOwnerFile(path)) { stream.Write(content, 0, content.Length); stream.Flush(); }
+                return;
+            }
+            var flags = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? 1 | 64 | 128 | 524288 : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? 1 | 512 | 2048 | 16777216 : throw new PlatformNotSupportedException("Private owner-key creation requires Windows, Linux or macOS.");
+            var fd = Open(path, flags, 384); // O_EXCL and 0600 from the first open.
+            if (fd < 0)
+            {
+                var error = Marshal.GetLastWin32Error();
+                if (error == 17) throw new OwnerKeyExistsException();
+                throw new IOException("Could not create the private owner access-key file (OS error " + error + ").");
+            }
+            // Unity's Mono cannot reliably wrap a libc fd in FileStream(SafeFileHandle).
+            // Keep Unix writes on the same native descriptor, without reopening the path.
+            try { WriteUnixKey(fd, content, Write, Sync, Marshal.GetLastWin32Error); }
+            finally { Close(fd); }
+        }
+        internal static void WriteUnixKey(int fd, byte[] content, Func<int, IntPtr, UIntPtr, IntPtr> write, Func<int, int> sync, Func<int> lastError)
+        {
+            var buffer = Marshal.AllocHGlobal(content.Length);
+            try
+            {
+                Marshal.Copy(content, 0, buffer, content.Length);
+                var offset = 0;
+                while (offset < content.Length)
+                {
+                    var count = write(fd, IntPtr.Add(buffer, offset), new UIntPtr((uint)(content.Length - offset))).ToInt64();
+                    if (count < 0 && lastError() == 4) continue; // EINTR, retry without losing progress.
+                    if (count <= 0 || count > content.Length - offset) throw new IOException("Could not finish writing the private owner key. Keep the file for inspection; admin access remains disabled.");
+                    offset += (int)count;
+                }
+                while (sync(fd) != 0) if (lastError() != 4) throw new IOException("Could not flush the private owner key. Inspect the file before using admin access.");
+            }
+            finally
+            {
+                for (var i = 0; i < content.Length; i++) Marshal.WriteByte(buffer, i, 0);
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        private static FileStream CreateWindowsOwnerFile(string path)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -104,21 +152,21 @@ namespace ModGate
                 {
                     var attributes = new SecurityAttributes { Length = Marshal.SizeOf(typeof(SecurityAttributes)), Descriptor = descriptor };
                     var handle = CreateFile(path, 0x40000000, 0, ref attributes, 1, 0x80, IntPtr.Zero);
-                    if (handle.IsInvalid) { handle.Dispose(); throw new IOException("Could not create the private owner access-key file."); }
+                    if (handle.IsInvalid) { var error = Marshal.GetLastWin32Error(); handle.Dispose(); if (error == 80 || error == 183) throw new OwnerKeyExistsException(); throw new IOException("Could not create the private owner access-key file (OS error " + error + ")."); }
                     return new FileStream(handle, FileAccess.Write);
                 }
                 finally { LocalFree(descriptor); }
             }
-            var flags = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? 1 | 64 | 128 | 524288 : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? 1 | 512 | 2048 | 16777216 : throw new PlatformNotSupportedException("Private owner-key creation requires Windows, Linux or macOS.");
-            var fd = Open(path, flags, 384); // 0600: server process owner only.
-            if (fd < 0) throw new IOException("Could not create the private owner access-key file.");
-            return new FileStream(new SafeFileHandle(new IntPtr(fd), true), FileAccess.Write);
+            throw new PlatformNotSupportedException();
         }
         [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes { public int Length; public IntPtr Descriptor; [MarshalAs(UnmanagedType.Bool)] public bool Inherit; }
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text, uint revision, out IntPtr descriptor, out uint size);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "CreateFileW")] private static extern SafeFileHandle CreateFile(string path, uint access, uint sharing, ref SecurityAttributes attributes, uint disposition, uint flags, IntPtr template);
         [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr pointer);
         [DllImport("libc", EntryPoint = "open", SetLastError = true)] private static extern int Open(string path, int flags, uint mode);
+        [DllImport("libc", EntryPoint = "write", SetLastError = true)] private static extern IntPtr Write(int fd, IntPtr buffer, UIntPtr count);
+        [DllImport("libc", EntryPoint = "fsync", SetLastError = true)] private static extern int Sync(int fd);
+        [DllImport("libc", EntryPoint = "close", SetLastError = true)] private static extern int Close(int fd);
     }
 
     internal sealed class AdminConfigRequestGuard

@@ -12,7 +12,7 @@ namespace ModGate
     internal static class Constants
     {
         public const string Guid = "studio.valheim.modgate";
-        public const string Version = "0.4.4";
+        public const string Version = "0.4.7";
         public const int Protocol = 6;
         public const int ManifestSchema = 1;
         public const int MaxJson = 256 * 1024;
@@ -58,6 +58,8 @@ namespace ModGate
         [DataMember(Name = "allowNewerClientVersions")] public bool AllowNewerClientVersions = false;
         [DataMember(Name = "autoUpdateOnRestart")] public bool AutoUpdateOnRestart = false;
         [DataMember(Name = "autoUpdateAllMods")] public bool AutoUpdateAllMods = false;
+        [DataMember(Name = "autoUpdateModGate")] public bool AutoUpdateModGate = false;
+        [DataMember(Name = "modGateIncludePrereleases")] public bool ModGateIncludePrereleases = true;
         [DataMember(Name = "mods")] public List<ModEntry> Mods = new List<ModEntry>();
     }
 

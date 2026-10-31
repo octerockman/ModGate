@@ -23,6 +23,16 @@ ModEntry Mod(string guid,string version="1.0.0",string side="required")=>new Mod
  ProfileConfigs.RefreshReceipt(SafePath.Under(root,"ModGate/staging/"+pending.Id),pending);return(root,pending);
 }
 void Verify(string root,PendingInstall pending)=>StageVerifier.VerifyStage(SafePath.Under(root,"ModGate/staging/"+pending.Id),pending);
+Test("creator support reads actual installed DLL identity and nearby package metadata without executing plugins",()=>
+{
+ var root=NewRoot();var folder=SafePath.Under(root,"plugins/Bascinet-OctoPack-1.7.3");Directory.CreateDirectory(folder);
+ File.WriteAllBytes(Path.Combine(folder,"pack.dll"),Plugin("OctoPack","1.7.4"));
+ File.WriteAllText(Path.Combine(folder,"manifest.json"),"{\"name\":\"OctoPack\",\"version_number\":\"1.7.3\",\"website_url\":\"https://github.com/octerockman/OctoPack\"}");
+ var mods=Inventory.InspectSupportPayload(folder);Check(mods.Single().Version=="1.7.4"&&mods[0].Package=="Bascinet-OctoPack-1.7.3"&&mods[0].LocalManifest?.Website=="https://github.com/octerockman/OctoPack");
+ var result=CreatorSupport.Read(root,new ProfileCatalog(),false,Inventory.InspectSupportPayload,CancellationToken.None);
+ Check(result.Mods.Count==2&&result.Mods[0].ModGate&&result.Mods[1].Name=="OctoPack"&&result.Mods[1].Links.Count==4);
+ File.Delete(Path.Combine(folder,"pack.dll"));Check(CreatorSupport.Read(root,new ProfileCatalog(),true,Inventory.InspectSupportPayload,CancellationToken.None).Mods.Count==1);
+});
 Test("partial proposal allows missing mods but server comparison still rejects",()=>
 {
  var(r,p)=Staged(("A-Good","good","1.0.0"));var policy=new Policy{Mods=new(){Mod("good"),Mod("missing")}};

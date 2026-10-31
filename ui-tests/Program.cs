@@ -13,7 +13,7 @@ void Test(string name, Action body)
     DrawCapture.Clear(); DrawCapture.Enabled = true;
     BepInEx.Paths.BepInExRootPath = Path.Combine(Path.GetTempPath(), "ModGate-ui-case-" + Guid.NewGuid().ToString("N"));
     GUILayout.ScrollDepth = 0; GUILayout.AreaDepth = 0;
-    GUI.enabled = true; Application.isBatchMode = false; ZInput.instance = new object(); Inventory.Current.Clear(); Inventory.Groups.Clear();
+    GUI.enabled = true; Application.isBatchMode = false; ZInput.instance = new object(); Inventory.Current.Clear(); Inventory.Groups.Clear(); Inventory.SupportInspect = null; ImageConversion.Reject = false;
     Event.current = new Event { type = EventType.Repaint }; ZInput.Pressed.Clear(); ZInput.Released.Clear(); ZInput.Held.Clear(); ZInput.BeforeRead = null; ZInput.Wheel = 0;
     UnityEngine.EventSystems.EventSystem.current = null;
     body(); passed++; Console.WriteLine("PASS " + name);
@@ -30,6 +30,7 @@ if (args.Contains("--040-only"))
     Console.WriteLine("All " + passed + " new profile feature simulations passed.");
     return;
 }
+if (args.Contains("--creator-support-only")) { CreatorSupportUiChecks.Run(Test,Check); Console.WriteLine("All " + passed + " creator support UI checks passed."); return; }
 if (args.Contains("--041-only"))
 {
     Visual041Checks.Run(Test, Check);
@@ -561,6 +562,8 @@ AdminConfigUiChecks.Run(Test,Check);
 Visual041Checks.Run(Test,Check);
 Feature042Checks.Run(Test,Check);
 ServerHealthUiChecks.Run(Test,Check);
+SelfUpdateUiChecks.Run(Test,Check);
+CreatorSupportUiChecks.Run(Test,Check);
 Console.WriteLine("All " + passed + " prompt simulations passed. These do not render or run Valheim.");
 
 }

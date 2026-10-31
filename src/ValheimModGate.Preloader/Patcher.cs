@@ -14,6 +14,11 @@ namespace ModGate.Preloader
         public static void Initialize()
         {
             var log = Logger.CreateLogSource("ModGate Installer");
+            if (SelfUpdateInstaller.GuardStartup(Paths.BepInExRootPath, message => log.LogWarning(message)))
+            {
+                Environment.Exit(0);
+                return;
+            }
             log.LogInfo("HTTP libraries before ModGate startup: " + NetworkAssemblyInfo.LoadedHttp());
             try
             {

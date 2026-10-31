@@ -16,6 +16,7 @@ namespace ModGate
         [DataMember] public string BootstrapAssembly = "";
         [DataMember] public string ConfirmationId = "";
         [DataMember] public string ExpectedVersion = "";
+        [DataMember] public string SelfUpdatePlan = "";
     }
     [DataContract] internal sealed class RestartConfirmation
     {
@@ -35,6 +36,21 @@ try {
     if ($old) {
         if ($old.StartTime.ToUniversalTime().Ticks -ne [long]$restart.StartTicks) { throw 'The original process identity changed; restart cancelled.' }
         if (-not $old.WaitForExit(120000)) { throw 'Valheim did not close within two minutes. Close and relaunch it manually.' }
+    }
+    if ($restart.SelfUpdatePlan) {
+        $expected = Join-Path $folder 'self-update-active.json'
+        if ([IO.Path]::GetFullPath($restart.SelfUpdatePlan) -cne [IO.Path]::GetFullPath($expected)) { throw 'Invalid self-update restart plan.' }
+        $update = Get-Content -LiteralPath $expected -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($update.Id -notmatch '^[a-fA-F0-9]{32}$' -or $update.Version -cne $restart.ExpectedVersion) { throw 'Self-update version or identity changed.' }
+        $updateHelper = Join-Path $folder ('self-updates/' + $update.Id + '/apply-update.ps1')
+        $apply = New-Object System.Diagnostics.ProcessStartInfo
+        $apply.FileName = Join-Path $PSHOME 'powershell.exe'
+        $apply.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File ""' + $updateHelper + '"" -Plan ""' + $expected + '""'
+        $apply.UseShellExecute = $false
+        $apply.CreateNoWindow = $true
+        $worker = [Diagnostics.Process]::Start($apply)
+        $worker.WaitForExit()
+        if ($worker.ExitCode -ne 0) { throw 'ModGate self-update did not finish. Check self-update-error.txt before relaunching.' }
     }
     $launch = New-Object System.Diagnostics.ProcessStartInfo
     $launch.FileName = $restart.Executable

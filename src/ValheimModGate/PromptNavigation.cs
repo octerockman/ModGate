@@ -167,6 +167,7 @@ namespace ModGate
         private void DrawSettings()
         {
             Label("Settings");
+            DrawSelfUpdates();
             var order = SourcePreferences.Load(Paths.BepInExRootPath);
             Label("Download priority: " + string.Join(" > ", order));
             foreach (var source in order) if (Toggle(false, "Prefer " + source)) SourcePreferences.First(Paths.BepInExRootPath, source);

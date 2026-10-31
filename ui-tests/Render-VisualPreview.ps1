@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$OutputPath = (Join-Path $PSScriptRoot '../../work/ui043-preview'),
-    [string]$BrowserPath = ''
+    [string]$BrowserPath = '',
+    [string[]]$Surfaces = @('mods', 'dependencies', 'profiles', 'mod-details', 'mod-detail', 'configs', 'server-configs', 'server-health', 'server-health-narrow', 'server-health-history', 'download', 'creators', 'creators-narrow', 'creator-popup', 'creator-popup-narrow')
 )
 $ErrorActionPreference = 'Stop'
 $previewDirectory = (Resolve-Path -LiteralPath $OutputPath).Path
@@ -18,7 +19,7 @@ $temporaryDirectory = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $browserProfile = Join-Path $temporaryDirectory ('ModGate-ui-replay-' + [Guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($browserProfile)
 try {
-    foreach ($surface in @('mods', 'dependencies', 'profiles', 'mod-details', 'mod-detail', 'configs', 'server-configs', 'server-health', 'server-health-narrow', 'server-health-history', 'download')) {
+    foreach ($surface in $Surfaces) {
         $document = (Resolve-Path -LiteralPath (Join-Path $previewDirectory ($surface + '.html'))).Path
         $metadata = Get-Content -LiteralPath (Join-Path $previewDirectory ($surface + '.json')) -Raw | ConvertFrom-Json
         $viewportWidth = [int]$metadata.viewport.width
