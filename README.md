@@ -102,4 +102,8 @@ Open **Activity** or **Open setup log** for preparation details. Include the Mod
 
 [Source code on GitHub](https://github.com/octerockman/ModGate) · [GitHub releases](https://github.com/octerockman/ModGate/releases)
 
-Licensed under MIT. Valheim is developed by Iron Gate; ModGate is an independent community mod.
+## Free and open source
+
+**ModGate is free and open source under the [MIT License](LICENSE).** Anyone can use, copy, edit, fork and redistribute it, including modified versions and commercial use. Keep the copyright and license notices with copies or substantial portions of the software. You do not need to ask for permission to edit or share ModGate.
+
+Valheim is developed by Iron Gate; ModGate is an independent community mod.
