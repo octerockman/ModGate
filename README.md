@@ -104,6 +104,12 @@ Open **Activity** or **Open setup log** for preparation details. Include the Mod
 
 [Report a bug or get help on Discord](https://discord.gg/AaVzBfPcYH)
 
+## Support Studio Bascinet
+
+Enjoying the mod? Optional donations help support Studio Bascinet's mod development. Thank you for your support.
+
+[![Donate with PayPal button](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=BUC6767NR59C8)
+
 ## Source and downloads
 
 [ModGate website — downloads and setup guides](https://modgate.pages.dev/)
