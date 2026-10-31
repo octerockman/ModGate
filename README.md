@@ -100,6 +100,8 @@ Open **Activity** or **Open setup log** for preparation details. Include the Mod
 
 ## Source and downloads
 
+[ModGate website — downloads and setup guides](https://modgate.pages.dev/)
+
 [Source code on GitHub](https://github.com/octerockman/ModGate) · [GitHub releases](https://github.com/octerockman/ModGate/releases)
 
 ## Free and open source
