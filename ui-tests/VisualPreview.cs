@@ -19,7 +19,7 @@ internal static class VisualPreview
         var index = Array.IndexOf(args, "--visual-preview");
         var output = Path.GetFullPath(index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal) ? args[index + 1] : "artifacts/ui-preview");
         Directory.CreateDirectory(output);
-        foreach (var surface in new[] { "mods", "dependencies", "profiles", "mod-details", "mod-detail", "configs", "server-configs", "server-health", "server-health-narrow", "server-health-history", "download", "creators", "creators-narrow", "creator-popup", "creator-popup-narrow" })
+        foreach (var surface in new[] { "mods", "dependencies", "profiles", "mod-details", "mod-detail", "configs", "server-configs", "server-health", "server-health-narrow", "server-health-history", "download", "prepare", "success", "success-narrow", "creators", "creators-narrow", "creator-popup", "creator-popup-narrow" })
         {
             using var fixture = surface.EndsWith("-narrow", StringComparison.Ordinal) ? Create(surface, 640, 900) : Create(surface);
             Capture(fixture.Prompt);
@@ -159,7 +159,12 @@ internal static class VisualPreview
                     Set(prompt, "scroll", new Vector2(0, Math.Max(0, heading.Area.y - viewport.y - 12)));
                 }
             }
-            if (surface == "download")
+            if (surface == "success" || surface == "success-narrow")
+            {
+                Set(prompt, "prepared", new PendingInstall { Id = Guid.NewGuid().ToString("N") });
+                Set(prompt, "preparedProfile", new SavedProfile { Name = "Example server" });
+            }
+            if (surface == "download" || surface == "prepare")
             {
                 var taskField = typeof(Prompt).GetField("task", Private)!;
                 var resultType = taskField.FieldType.GetGenericArguments()[0];
@@ -167,6 +172,7 @@ internal static class VisualPreview
                 taskField.SetValue(prompt, task.GetType().GetProperty("Task")!.GetValue(task));
                 Set(prompt, "workflow", "Download"); Set(prompt, "progress", "Downloading TeleportEverything 2.8.0…");
                 Set(prompt, "downloadCount", 5); Set(prompt, "downloadedCount", 2); Set(prompt, "downloadFraction", .4f);
+                if (surface == "prepare") { Set(prompt, "downloadFraction", 1f); Call(prompt, "SetupProgress", "Preparing profile configs…"); }
             }
         }
         return fixture;

@@ -12,6 +12,8 @@ namespace ModGate
         private GUIStyle? headingStyle, captionStyle, primaryStyle, panelStyle;
         private Texture2D? sidebarBackground, panelBackground, goldBackground, separatorBackground;
         private string featurePage = "";
+        private bool completionBackground;
+        private Texture2D? completionShade;
         private bool optionalExpanded = true;
         private readonly System.Collections.Generic.HashSet<string> collapsedModules = new System.Collections.Generic.HashSet<string>();
 
@@ -25,12 +27,24 @@ namespace ModGate
         }
         private bool WorkflowBusy => task != null || featureTask != null || SelfUpdateBusy || SelfUpdateQueued || scheduled || Profiles.Pending(Paths.BepInExRootPath);
         private bool Busy => WorkflowBusy || ServerHealthRequestActive;
-        private bool InstallationReady => !manager && !scheduled && task == null && prepared != null && preparedProfile?.Incomplete != true && error.Length == 0 && !settingsPage && featurePage.Length == 0;
+        private bool InstallationReady => !manager && !scheduled && task == null && featureTask == null && prepared != null && preparedProfile?.Incomplete != true && error.Length == 0 && !settingsPage && featurePage.Length == 0;
         private string CurrentSlot => editingSlot ?? (!manager && targetSlot.Length > 0 ? targetSlot : catalog.Active);
         private void DrawWindow(float width, float height)
         {
             InitializeShell();
-            if (InstallationReady) { DrawInstallationReady(width, height); return; }
+            var overlay = InstallationReady;
+            completionBackground = overlay;
+            try { DrawMainWindow(width, height); }
+            finally { completionBackground = false; }
+            if (overlay)
+            {
+                if (completionShade == null) completionShade = Solid(new Color(0, 0, 0, .65f));
+                GUI.DrawTexture(new Rect(0, 0, width, height), completionShade);
+                DrawInstallationReady(width, height);
+            }
+        }
+        private void DrawMainWindow(float width, float height)
+        {
             var sidebar = width >= 850 && height >= 680 ? 200f : 0f;
             var left = sidebar + 28; contentWidth = Mathf.Max(1, width - left - 28);
             var showProfileTabs = !settingsPage && featurePage != "Server" && featurePage != "Creators" && (!(manager && editingSlot == null) || ServerHealthSelected);
@@ -148,16 +162,23 @@ namespace ModGate
         }
         private void DrawInstallationReady(float width, float height)
         {
-            var left = 32f; var available = width - 64;
-            var top = Mathf.Max(32, (height - 250) / 2);
-            LabelAt(new Rect(left, top, available, 44), "Profile prepared successfully", "title", "green");
-            LabelAt(new Rect(left, top + 58, available, 64), "Your selected mods are ready to install. Restart Valheim to activate this profile, then join the server again.", "body");
-            var stacked = available < 600; var buttonWidth = stacked ? available : (available - 16) / 2;
+            var cardWidth = Mathf.Min(820, width - 48); var stacked = cardWidth < 680;
+            var cardHeight = Mathf.Min(stacked ? 300 : 280, height - 32);
+            var card = new Rect((width - cardWidth) / 2, (height - cardHeight) / 2, cardWidth, cardHeight);
+            Card(card); GUI.DrawTexture(new Rect(card.x, card.y, card.width, 3), goldBackground!);
+            var left = card.x + 24; var available = card.width - 48;
+            Badge(new Rect(left, card.y + 20, 166, 26), "READY TO INSTALL", "green");
+            if (Action(new Rect(card.x + card.width - 48, card.y + 12, 32, 32), "×", "quiet")) SavePreparationForLater();
+            LabelAt(new Rect(left, card.y + 58, available, 44), "Profile prepared successfully", "title");
+            LabelAt(new Rect(left, card.y + 108, available, 44), "Your mods and configs are ready.\nInstall now and restart, or apply them on your next launch.", "body", "muted");
+            var buttonWidth = stacked ? available : (available - 16) / 2;
+            var buttonTop = card.y + card.height - 24 - (stacked ? 104 : 46);
             var normal = button; button = primaryStyle; GUI.enabled = true;
             try
             {
-                if (Button(new Rect(left, top + 144, buttonWidth, 46), "Install and restart")) { Schedule(); if (scheduled) Restart(); }
-                if (Button(new Rect(stacked ? left : left + buttonWidth + 16, top + (stacked ? 202 : 144), buttonWidth, 46), "Install on next launch")) Schedule();
+                if (Button(new Rect(left, buttonTop, buttonWidth, 46), "Install and restart")) { Schedule(); if (scheduled) Restart(); }
+                button = normal;
+                if (Button(new Rect(stacked ? left : left + buttonWidth + 16, buttonTop + (stacked ? 58 : 0), buttonWidth, 46), "Install on next launch")) Schedule();
             }
             catch (Exception failure) when (!(failure is ExitGUIException)) { error = failure.Message; log("ModGate action: " + failure); }
             finally { button = normal; GUI.enabled = true; }
@@ -185,18 +206,24 @@ namespace ModGate
         }
         private void DrawProcessContent()
         {
-            var stages = new[] { "Check", "Prepare", "Download", "Review", "Install" };
+            var stages = new[] { "Check", "Download", "Prepare", "Review", "Install" };
             var steps = Reserve(44); var stepWidth = steps.width / stages.Length;
             for (var i = 0; i < stages.Length; i++) Badge(new Rect(steps.x + i * stepWidth, steps.y, stepWidth - 8, 30), (i + 1) + "  " + stages[i], workflow == stages[i] ? "gold" : "muted");
             GUILayout.Space(18);
             var box = Reserve(206); Card(box);
-            var titleText = workflow == "Download" ? "Downloading mods" : workflow == "Install" ? "Preparing installation" : "Preparing your profile";
+            var preparing = workflow == "Prepare" || workflow == "Install";
+            var titleText = workflow == "Download" ? "Downloading mods" : preparing ? "Preparing your profile" : "Checking your profile";
             LabelAt(new Rect(box.x + 22, box.y + 18, box.width - 44, 36), titleText, "heading");
             LabelAt(new Rect(box.x + 22, box.y + 62, box.width - 44, 28), progress.Length > 0 ? progress : "Checking packages and dependencies…", "body", "muted");
             var track = new Rect(box.x + 22, box.y + 118, box.width - 44, 8);
             GUI.DrawTexture(track, buttonHover!);
-            if (downloadFraction > 0) GUI.DrawTexture(new Rect(track.x, track.y, track.width * Mathf.Clamp(downloadFraction, 0, 1), track.height), goldBackground!);
-            LabelAt(new Rect(box.x + 22, box.y + 143, box.width - 44, 24), downloadCount > 0 ? downloadedCount + " of " + downloadCount + " packages prepared · " + (int)(downloadFraction * 100) + "%" : "Resolving the selected setup", "small", "muted");
+            if (preparing)
+            {
+                var pulse = (float)(.5 + .5 * Math.Sin(Time.realtimeSinceStartup * 2));
+                GUI.DrawTexture(new Rect(track.x + track.width * .72f * pulse, track.y, track.width * .28f, track.height), goldBackground!);
+            }
+            else if (downloadFraction > 0) GUI.DrawTexture(new Rect(track.x, track.y, track.width * Mathf.Clamp(downloadFraction, 0, 1), track.height), goldBackground!);
+            LabelAt(new Rect(box.x + 22, box.y + 143, box.width - 44, 40), preparing ? "Still working · unpacking, checking files and preparing configs" : downloadCount > 0 ? downloadedCount + " of " + downloadCount + " packages prepared · " + (int)(downloadFraction * 100) + "%" : "Resolving the selected setup", "small", "muted");
             Notice("Your current setup is kept", "Matching installed mods are reused. Installation applies after Valheim closes.", "green");
             if (error.Length > 0) Notice("Setup needs attention", error, "red");
         }

@@ -25,6 +25,7 @@ namespace ModGate
             using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(serverId + "|" + host))).Replace("-", "").ToLowerInvariant();
         }
         public static string? SlotFor(ProfileCatalog catalog, string serverKey) => catalog.Servers.FirstOrDefault(s => s.ServerKey == serverKey)?.Slot ?? Enumerable.Range(1, 4).Select(i => "server-" + i).FirstOrDefault(slot => catalog.Servers.All(s => s.Slot != slot));
+        internal static void ValidatePreparedCommand(string root, ProfileCommand command) => ValidateCommand(root, command, Load(root));
         public static void Schedule(string root, ProfileCommand command)
         {
             if (Pending(root)) throw new InvalidOperationException("A profile change is already scheduled. Restart Valheim first.");

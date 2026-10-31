@@ -1,4 +1,4 @@
-# Valheim ModGate 0.4.8
+# Valheim ModGate 0.4.9
 
 ## Official connector updates
 
@@ -15,7 +15,7 @@ Stop Valheim and the server, then install both included files on the server and 
     BepInEx/plugins/ValheimModGate/ValheimModGate.dll
     BepInEx/patchers/ValheimModGate/ValheimModGate.Preloader.dll
 
-Keep existing configs and profiles. Install both 0.4.8 DLLs on the server and every client (network protocol 6). Older saved profiles remain usable. BepInEx must already be installed; ModGate never installs or updates it. Start through the same installation or mod-manager profile as before.
+Keep existing configs and profiles. Install both 0.4.9 DLLs on the server and every client (network protocol 6). Older saved profiles remain usable. BepInEx must already be installed; ModGate never installs or updates it. Start through the same installation or mod-manager profile as before.
 
 This release prepares the public package and protects ModGate's own author/package folder during profile changes. It retains **Server health** for administrators, **Shift+F6**, gameplay-input blocking, collapsible config files, **Reload configs**, explicit dependency choices, the sidebar and separate Mod details tab, profile checks and targeted repairs, restore points, and support reports. Existing clientOnly, newer-version allowances, server manifest folders, password remembering and isolated server-update transport are retained.
 

@@ -100,7 +100,7 @@ Windows supports automatic relaunch and encrypted password storage. Other launch
 
 **ModGate updates:** after installing 0.4.6 manually once, open **Settings → ModGate updates** to check official GitHub releases, download for review, and install on closing or install and restart on Windows. Both DLLs are verified and backed up together; profiles, configs and BepInEx are kept. Client launch checks are enabled, but installation requires your choice. Server self-updating is separate and off by default; see the server-owner guide for enabling it and safely stopping/restarting a hosted server.
 
-Version **0.4.8** is an early release. Automated tests cover the setup and recovery logic; actual rendering, host permissions and mod interactions still need validation in your own environment.
+Version **0.4.9** is an early release. Automated tests cover the setup and recovery logic; actual rendering, host permissions and mod interactions still need validation in your own environment.
 
 ## Help and bug reports
 

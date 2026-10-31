@@ -6,7 +6,7 @@ namespace ModGate
 {
     internal sealed partial class Prompt
     {
-        private bool installedExtrasExpanded;
+        private bool installedExtrasExpanded = true;
         private void DrawJoinMods()
         {
             var current = policy!;

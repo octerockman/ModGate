@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.9
+
+- Show completion over the normal ModGate window. The corner close button saves a verified preparation for later without scheduling installation; resume it from Profiles. Cache cleanup keeps retained preparations.
+- Expand matching installed mods and other installed mods by default when setting up a profile.
+- Show unpacking, verification, copying and config preparation after downloads finish, with an animated preparation indicator instead of a stalled 100% bar.
+- Present successful preparation in a centered completion card with a clear primary restart action and secondary next-launch action.
+
 ## 0.4.8
 
 - Display action progress, completion and errors in a visible status panel across pages. Clear the download cache and sync configs in the background with repeated actions blocked while running.

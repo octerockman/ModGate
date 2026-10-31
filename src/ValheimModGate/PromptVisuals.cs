@@ -109,7 +109,7 @@ namespace ModGate
         }
         private bool Action(Rect area, string label, string kind = "secondary", bool selected = false)
         {
-            InitializeVisuals(); var outerEnabled = GUI.enabled; var enabled = outerEnabled && (creatorPopup == null || drawingCreatorPopup); GUI.enabled = enabled; var style = ButtonStyle(kind, selected);
+            InitializeVisuals(); var outerEnabled = GUI.enabled; var enabled = outerEnabled && !completionBackground && (creatorPopup == null || drawingCreatorPopup); GUI.enabled = enabled; var style = ButtonStyle(kind, selected);
             var clicked = GUI.Button(area, label, style); if (clicked) { pointerClick = null; pointerPress = null; }
             else clicked = PointerClicked(area);
             var display = Regex.Replace(label, @"\s+\((offline|server-[1-4])\)$", "");
@@ -129,7 +129,7 @@ namespace ModGate
         }
         private bool Check(Rect area, bool selected, bool enabled, string label)
         {
-            InitializeVisuals(); var before = GUI.enabled; GUI.enabled = enabled && before;
+            InitializeVisuals(); var before = GUI.enabled; GUI.enabled = enabled && before && !completionBackground;
             var next = GUI.Toggle(area, selected, label, invisibleControl!);
             if (next != selected) { pointerClick = null; pointerPress = null; }
             else if (PointerClicked(area)) next = !selected;

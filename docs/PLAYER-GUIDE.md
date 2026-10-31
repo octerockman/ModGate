@@ -14,6 +14,8 @@ You need ModGate on your computer because the server cannot install mods on your
 
 ## Install once
 
+After a successful profile download, the completion card appears over the normal ModGate window. Its corner **×** saves the prepared setup for later without activating it or scheduling installation for the next restart. Open **Profiles → Resume saved setup** to return to the install choices. Saved preparations survive normal restarts and download-cache cleanup. Server requirements may have changed since preparation; they are checked again when joining.
+
 1. Install BepInEx for Valheim first. ModGate assumes it is already installed.
 2. For a manual install, close Valheim normally and put both ModGate files into the game installation or mod-manager profile that you normally launch:
 
@@ -22,7 +24,7 @@ You need ModGate on your computer because the server cannot install mods on your
    BepInEx/patchers/ValheimModGate/ValheimModGate.Preloader.dll
    ```
 
-3. Start Valheim as usual. Your ModGate version must match the server's; for this release, both sides need **0.4.8**. Keep your existing profiles and configs when upgrading.
+3. Start Valheim as usual. Your ModGate version must match the server's; for this release, both sides need **0.4.9**. Keep your existing profiles and configs when upgrading.
 
 Mod managers can add their own author/package folders below plugins and patchers. Keep using the same external manager profile. ModGate does not install or update BepInEx.
 

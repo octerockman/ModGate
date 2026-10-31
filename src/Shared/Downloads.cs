@@ -136,10 +136,12 @@ namespace ModGate
                 progress("Downloading " + id.FullName);
                 var archive = await DownloadCache.Get(root, id, source, progress, token).ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
+                progress("Extracting " + id.FullName);
                 try { Extract(archive, stage, id, token: token); }
                 catch (InvalidDataException) { DownloadCache.Invalidate(root, id); throw; }
                 progress("Prepared " + id.FullName);
             }
+            progress("Verifying downloaded files…");
             foreach (var path in Directory.GetFiles(stage, "*", SearchOption.AllDirectories))
                 pending.Files.Add(new FileDigest { Path = path.Substring(stage.Length + 1).Replace('\\', '/'), Sha256 = SafePath.Hash(path) });
             return pending;

@@ -81,6 +81,7 @@ namespace ModGate
             if (savedServer != null)
                 foreach (var saved in savedServer.Mods.Where(m => m.Guid != Constants.Guid))
                     if (serverPolicy.Mods.Any(m => m.Guid == saved.Guid && m.Side == "optional") || serverPolicy.Mods.All(m => m.Guid != saved.Guid) && ProfileSelection.CanCarry(serverPolicy, saved)) selectedMods.Add(saved.Guid);
+            matchingExpanded = true; installedExtrasExpanded = true;
             InitializeDependencyChoices();
             setupLog.Write("Active profile: " + catalog.Active);
             foreach (var mod in comparison.Missing) setupLog.Write("MISSING: " + mod.Name + " / " + mod.Guid + " / server requires " + mod.Version + " / package " + mod.Package);
@@ -343,14 +344,17 @@ namespace ModGate
                     }
                     issues.AddRange(dependencyMessages);
                     if (allowIncomplete) Inventory.FilterPartialStage(root, serverPolicy, staged, effectiveSelection, issues);
+                    SetupProgress("Verifying downloaded mod versions…");
                     var stage = SafePath.Under(root, "ModGate/staging/" + staged.Id);
                     var downloaded = Inventory.InspectStaged(stage);
                     var copies = plan.Local.Where(m => !downloaded.Any(d => d.Guid == m.Guid && (PolicyEngine.VersionsEqual(d.Version, m.Version) || serverPolicy.Mods.Any(w => w.Guid == m.Guid && fallback.Substituted(w.Package))))).ToArray();
                     foreach (var mod in copies) setupLog.Write("Reusing installed copy: " + mod.Name + " " + mod.Version);
+                    SetupProgress("Copying matching installed mods…");
                     if (allowIncomplete) PartialSetup.CopyLocal(root, copies, installed, staged, token, issues);
                     else ManualMods.Stage(root, copies, installed, staged, token);
                     if (allowIncomplete) Inventory.FilterPartialStage(root, serverPolicy, staged, effectiveSelection, issues);
                     token.ThrowIfCancellationRequested();
+                    SetupProgress("Verifying prepared profile…");
                     var reviewPolicy = fallback.ReviewPolicy(serverPolicy, Inventory.InspectStaged(stage));
                     var mods = Inventory.CompleteProfileProposal(root, reviewPolicy, staged, allowIncomplete, issues.Add);
                     if (!allowIncomplete) ProfileSelection.ValidatePrepared(reviewPolicy, mods, effectiveSelection);
@@ -363,7 +367,7 @@ namespace ModGate
                     }
                     foreach (var extra in installed.Where(m => selection.Contains(m.Guid) && mods.All(p => p.Guid != m.Guid))) issues.Add(extra.Name + ": selected installed copy is missing from this profile.");
                     List<ConfigBinding> bindings;
-                    try { setupLog.Write("Preparing per-profile configs from " + configMode + "."); bindings = ProfileConfigs.Stage(root, mods, configMode, staged); }
+                    try { SetupProgress("Preparing profile configs…"); setupLog.Write("Preparing per-profile configs from " + configMode + "."); bindings = ProfileConfigs.Stage(root, mods, configMode, staged); }
                     catch (Exception failure) when (allowIncomplete && !(failure is OperationCanceledException))
                     {
                         issues.Add("Config copy failed; this profile will start with defaults: " + failure.Message);
@@ -397,6 +401,8 @@ namespace ModGate
                 setupLog.Write("Scheduled " + command.Kind + " for profile " + command.Target + ". Applies on restart.");
                 log("Scheduled " + command.Kind + " profile change for the next launch.");
                 scheduled = true; workflow = "Restart";
+                if (command.Kind == "install" && command.Install != null)
+                    try { ProfileDrafts.Forget(Paths.BepInExRootPath, command.Target, command.Install.Id); } catch (Exception failure) { log("Prepared setup metadata cleanup: " + failure.Message); }
                 progress = command.Kind == "delete" ? "Server profile deletion scheduled. Restart to apply; an active deleted profile will return to offline." : command.Kind == "removeAll" ? "Removal scheduled. Downloaded server profiles will be cleared and the offline profile restored." : "Profile change scheduled. Your current profile will be saved before switching.";
             }
             catch (Exception exception) { error = exception.Message; setupLog.Failure(exception); }
@@ -408,6 +414,7 @@ namespace ModGate
                 DiscardUnscheduledPreparation();
                 local = Inventory.Loaded();
                 ProfileConfigs.RecordActive(Paths.BepInExRootPath, local);
+                savedPreparations = ProfileDrafts.List(Paths.BepInExRootPath);
                 catalog = Profiles.Load(Paths.BepInExRootPath);
                 manager = true; settingsPage = false; featurePage = ""; configDocument = null; navigationTab = "Mods"; editingSlot = null; preparedEdit = null; prepared = null; preparedProfile = null; confirmRemoval = false; deleteSlot = null; visible = true; error = "";
                 EnsureCursor();
@@ -417,7 +424,14 @@ namespace ModGate
         }
         private string ProfileName(string slot) => slot == "offline" ? "Offline" : catalog.Servers.FirstOrDefault(s => s.Slot == slot)?.Name ?? slot;
         private static Policy ServerSnapshot(Policy source) { var copy = Json.CloneLocal(source); copy.Nonce = ""; return copy; }
-        private void SetupProgress(string message) { if (message.StartsWith("Downloading ", StringComparison.Ordinal)) transferPackage = message.Substring(12); lock (transferGate) { transferSteps.Add(message); if (transferSteps.Count > 80) transferSteps.RemoveAt(0); } progress = message; setupLog.Write(message); if (message.StartsWith("Prepared ", StringComparison.Ordinal)) { downloadedCount++; if (downloadCount > 0) downloadFraction = (float)downloadedCount / downloadCount; } }
+        private void SetupProgress(string message)
+        {
+            if (message.StartsWith("Downloading ", StringComparison.Ordinal)) { transferPackage = message.Substring(12); workflow = "Download"; }
+            else if (message.StartsWith("Extracting ", StringComparison.Ordinal) || message.StartsWith("Verifying ", StringComparison.Ordinal) || message.StartsWith("Copying ", StringComparison.Ordinal) || message.StartsWith("Preparing profile configs", StringComparison.Ordinal)) workflow = "Prepare";
+            lock (transferGate) { transferSteps.Add(message); if (transferSteps.Count > 80) transferSteps.RemoveAt(0); }
+            progress = message; setupLog.Write(message);
+            if (message.StartsWith("Prepared ", StringComparison.Ordinal)) { downloadedCount++; if (downloadCount > 0) downloadFraction = (float)downloadedCount / downloadCount; }
+        }
         private void OpenSetupLog()
         {
             try
@@ -674,6 +688,7 @@ namespace ModGate
             if (panelBackground != null) UnityEngine.Object.Destroy(panelBackground);
             if (goldBackground != null) UnityEngine.Object.Destroy(goldBackground);
             if (separatorBackground != null) UnityEngine.Object.Destroy(separatorBackground);
+            if (completionShade != null) UnityEngine.Object.Destroy(completionShade);
             if (progressBar != null) UnityEngine.Object.Destroy(progressBar);
             foreach (var texture in visualTextures) UnityEngine.Object.Destroy(texture);
             visualTextures.Clear();

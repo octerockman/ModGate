@@ -13,6 +13,7 @@ namespace UnityEngine
     public static class Cursor { public static CursorLockMode lockState; public static bool visible; }
     public static class Application { public static bool isBatchMode; public static string LastUrl = ""; public static void OpenURL(string url) { LastUrl = url; } }
     public static class Screen { public static int width = 1920, height = 1080; }
+    public static class Time { public static float realtimeSinceStartup { get; set; } }
     public readonly record struct Color(float r, float g, float b, float a)
     {
         public Color(float r, float g, float b) : this(r, g, b, 1) { }

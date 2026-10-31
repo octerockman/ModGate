@@ -544,6 +544,32 @@ Test("back from review returns to selection while preserving checked optional ch
     var flags=BindingFlags.NonPublic|BindingFlags.Instance;typeof(Prompt).GetField("prepared",flags)!.SetValue(prompt,new PendingInstall{Id=Guid.NewGuid().ToString("N")});typeof(Prompt).GetField("preparedProfile",flags)!.SetValue(prompt,new SavedProfile());
     typeof(Prompt).GetMethod("NavigateBack",flags)!.Invoke(prompt,null);Check(prompt.IsVisible&&typeof(Prompt).GetField("prepared",flags)!.GetValue(prompt)==null&&((HashSet<string>)typeof(Prompt).GetField("selectedMods",flags)!.GetValue(prompt)!).Contains("option"));
 });
+Test("installed mod groups start expanded and reset on a new join",()=>
+{
+    BepInEx.Paths.BepInExRootPath=Path.Combine(Path.GetTempPath(),"ModGate-expanded049-"+Guid.NewGuid().ToString("N"));
+    var mod=new ModEntry{Guid="matching",Name="Matching",Version="1.0.0",Side="required"};var extra=new ModEntry{Guid="extra",Name="Extra",Version="1.0.0"};
+    using var prompt=new Prompt(_=>{},()=>{},()=>{});var policy=new Policy{AllowExtras=true,Mods=new(){mod}};
+    prompt.Show(policy,new Comparison(),new[]{mod,extra},new string('c',64));VisualPreview.Capture(prompt);
+    Check(GUI.Buttons.Any(b=>b.Text=="Hide matching mods (1)")&&GUI.Buttons.Any(b=>b.Text=="▼ Other installed mods (1)"));
+    GUI.Click="Hide matching mods (1)";prompt.Draw();GUI.Click="▼ Other installed mods (1)";prompt.Draw();
+    prompt.Show(policy,new Comparison(),new[]{mod,extra},new string('c',64));VisualPreview.Capture(prompt);
+    Check(GUI.Buttons.Any(b=>b.Text=="Hide matching mods (1)")&&GUI.Buttons.Any(b=>b.Text=="▼ Other installed mods (1)"));
+});
+Test("download completion switches to preparation without a stale percentage",()=>
+{
+    BepInEx.Paths.BepInExRootPath=Path.Combine(Path.GetTempPath(),"ModGate-prepare049-"+Guid.NewGuid().ToString("N"));
+    using var prompt=new Prompt(_=>{},()=>{},()=>{});prompt.Show(new Policy(),new Comparison(),Array.Empty<ModEntry>(),new string('d',64));
+    var flags=BindingFlags.NonPublic|BindingFlags.Instance;var taskField=typeof(Prompt).GetField("task",flags)!;var resultType=taskField.FieldType.GenericTypeArguments[0];
+    var completion=Activator.CreateInstance(typeof(TaskCompletionSource<>).MakeGenericType(resultType))!;taskField.SetValue(prompt,completion.GetType().GetProperty("Task")!.GetValue(completion));
+    typeof(Prompt).GetField("downloadFraction",flags)!.SetValue(prompt,1f);typeof(Prompt).GetField("downloadCount",flags)!.SetValue(prompt,1);
+    typeof(Prompt).GetMethod("SetupProgress",flags)!.Invoke(prompt,new object[]{"Extracting Author-Mod-1.0.0"});VisualPreview.Capture(prompt);
+    Check(DrawCapture.Commands.Any(c=>c.Text=="Preparing your profile")&&DrawCapture.Commands.Any(c=>c.Text.Contains("Still working")));
+    Check(!DrawCapture.Commands.Any(c=>c.Kind=="label"&&c.Text.Contains("100%")));
+    var indicator=DrawCapture.Commands.Last(c=>c.Kind=="texture"&&c.Area.height==8).Area.x;Time.realtimeSinceStartup=.7f;VisualPreview.Capture(prompt);
+    Check(DrawCapture.Commands.Last(c=>c.Kind=="texture"&&c.Area.height==8).Area.x!=indicator);Time.realtimeSinceStartup=0;
+    typeof(Prompt).GetMethod("SetupProgress",flags)!.Invoke(prompt,new object[]{"Preparing profile configs…"});VisualPreview.Capture(prompt);
+    Check(DrawCapture.Commands.Any(c=>c.Text.Contains("Preparing profile configs")));
+});
 Test("successful preparation shows only success and two install actions without dependency warnings",()=>
 {
     BepInEx.Paths.BepInExRootPath=Path.Combine(Path.GetTempPath(),"ModGate-success048-"+Guid.NewGuid().ToString("N"));
@@ -553,13 +579,39 @@ Test("successful preparation shows only success and two install actions without 
     foreach(var size in new[]{(1280,1000),(640,360)})
     {
         Screen.width=size.Item1;Screen.height=size.Item2;VisualPreview.Capture(prompt);
-        Check(GUI.Buttons.Count==2&&GUI.Buttons.All(b=>b.Text=="Install and restart"||b.Text=="Install on next launch"));
+        var enabled=GUI.Buttons.Where(b=>b.Enabled).ToArray();
+        Check(enabled.Length==3&&enabled.All(b=>b.Text=="Install and restart"||b.Text=="Install on next launch"||b.Text=="×"));
+        Check(GUI.Buttons.Any(b=>b.Text=="Settings"&&!b.Enabled)&&DrawCapture.Commands.Any(c=>c.Text=="ModGate"));
         Check(DrawCapture.Commands.Any(c=>c.Text=="Profile prepared successfully"));
         Check(!GUILayout.Toggles.Any()&&!GUILayout.Labels.Any(l=>l.Contains("Suggested dependencies")||l.Contains("needs attention")||l.Contains("Prepared packages")));
     }
     Screen.width=1280;Screen.height=1000;
     typeof(Prompt).GetField("preparedProfile",flags)!.SetValue(prompt,new SavedProfile{Incomplete=true});VisualPreview.Capture(prompt);
     Check(!DrawCapture.Commands.Any(c=>c.Text=="Profile prepared successfully")&&GUILayout.Labels.Any(l=>l.Contains("PARTIAL PROFILE")));
+});
+Test("completion close saves a resumable setup without scheduling installation",()=>
+{
+    var root=Path.Combine(Path.GetTempPath(),"ModGate-save-later049-"+Guid.NewGuid().ToString("N"));BepInEx.Paths.BepInExRootPath=root;Inventory.Current=new();Inventory.Groups=new();
+    var pending=new PendingInstall{Id=Guid.NewGuid().ToString("N")};var stage=SafePath.Under(root,"ModGate/staging/"+pending.Id);Directory.CreateDirectory(stage);
+    var policy=new Policy{ServerName="Saved server"};var profile=new SavedProfile{Slot="server-1",ServerKey=new string('a',64),Name="Saved server",ServerPolicy=policy};
+    var flags=BindingFlags.NonPublic|BindingFlags.Instance;
+    using(var prompt=new Prompt(_=>{},()=>{},()=>{}))
+    {
+        prompt.Show(policy,new Comparison(),Array.Empty<ModEntry>(),profile.ServerKey);
+        typeof(Prompt).GetField("prepared",flags)!.SetValue(prompt,pending);typeof(Prompt).GetField("preparedProfile",flags)!.SetValue(prompt,profile);
+        VisualPreview.Capture(prompt);GUI.Click="Settings";prompt.Draw();Check(!(bool)typeof(Prompt).GetField("settingsPage",flags)!.GetValue(prompt)!);
+        GUI.Click="×";prompt.Draw();var work=(Task)typeof(Prompt).GetField("featureTask",flags)!.GetValue(prompt)!;
+        Check(SpinWait.SpinUntil(()=>work.IsCompleted,5000));typeof(Prompt).GetMethod("UpdateFeatures",flags)!.Invoke(prompt,null);
+        Check(!Profiles.Pending(root)&&!(bool)typeof(Prompt).GetField("scheduled",flags)!.GetValue(prompt)!&&Directory.Exists(stage));
+        Check(ProfileDrafts.Read(root,"server-1").Install!.Id==pending.Id);
+    }
+    Profiles.Apply(root,_=>{});Check(Profiles.Load(root).Active=="offline"&&!Profiles.Pending(root));
+    DownloadCache.Clear(root);Check(Directory.Exists(stage));
+    using var reopened=new Prompt(_=>{},()=>{},()=>{});typeof(Prompt).GetMethod("OpenManager",flags)!.Invoke(reopened,null);VisualPreview.Capture(reopened);
+    Check(GUI.Buttons.Any(b=>b.Text=="Resume saved setup (server-1)"));
+    GUI.Click="Resume saved setup (server-1)";reopened.Draw();var resumed=(Task)typeof(Prompt).GetField("featureTask",flags)!.GetValue(reopened)!;
+    Check(SpinWait.SpinUntil(()=>resumed.IsCompleted,5000));typeof(Prompt).GetMethod("UpdateFeatures",flags)!.Invoke(reopened,null);VisualPreview.Capture(reopened);
+    Check(GUI.Buttons.Any(b=>b.Text=="Install and restart"&&b.Enabled)&&!Profiles.Pending(root));
 });
 Test("closing setup discards a late successful staging result without reopening review",()=>
 {

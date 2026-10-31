@@ -9,6 +9,7 @@ namespace ModGate
 
         private void DrawProfileCards()
         {
+            DrawSavedPreparations();
             var width = Mathf.Max(1, contentWidth - 20);
             var wideOffline = width >= 660;
             var offlineHeight = wideOffline ? 112 : width - ProfileCardPadding * 2 >= 280 ? 166 : 210;

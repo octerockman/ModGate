@@ -41,6 +41,7 @@ namespace ModGate
         }
         private void HandleEscape()
         {
+            if (InstallationReady) { SavePreparationForLater(); return; }
             if (creatorPopup != null) { creatorPopup = null; return; }
             if (pendingNavigation != null) { pendingNavigation = null; return; }
             if (confirmAction != null) { confirmAction = null; return; }

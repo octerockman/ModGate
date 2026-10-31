@@ -36,6 +36,7 @@ namespace ModGate
         public static void DiscardStage(string root, string id)
         {
             if (!Guid.TryParseExact(id, "N", out _)) throw new InvalidDataException("Invalid staging cleanup identifier.");
+            if (ProfileDrafts.Retains(root, id)) return;
             var path = SafePath.Under(root, "ModGate/staging/" + id); if (!Directory.Exists(path)) return;
             foreach (var file in Directory.GetFileSystemEntries(path, "*", SearchOption.AllDirectories)) SafePath.Under(path, file.Substring(path.Length + 1));
             Directory.Delete(path, true);
@@ -46,6 +47,17 @@ namespace ModGate
             foreach (var folder in new[] { "ModGate/staging", "ModGate/download-cache" })
             {
                 var path = SafePath.Under(root, folder); if (!Directory.Exists(path)) continue;
+                if (folder == "ModGate/staging" && ProfileDrafts.List(root).Count > 0)
+                {
+                    foreach (var entry in Directory.GetFileSystemEntries(path))
+                    {
+                        var name = Path.GetFileName(entry); var safe = SafePath.Under(path, name);
+                        if (Directory.Exists(safe) && ProfileDrafts.Retains(root, name)) continue;
+                        if (Directory.Exists(safe)) { foreach (var file in Directory.GetFileSystemEntries(safe, "*", SearchOption.AllDirectories)) SafePath.Under(safe, file.Substring(safe.Length + 1)); Directory.Delete(safe, true); }
+                        else File.Delete(safe);
+                    }
+                    continue;
+                }
                 foreach (var file in Directory.GetFileSystemEntries(path, "*", SearchOption.AllDirectories)) SafePath.Under(path, file.Substring(path.Length + 1));
                 Directory.Delete(path, true);
             }

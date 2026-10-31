@@ -10,7 +10,7 @@ namespace ModGate
     internal sealed partial class Prompt
     {
         private string navigationTab = "Mods", search = "", modFilter = "Needs attention", moreProfile = "", passwordEdit = "";
-        private bool settingsPage, showDetails, matchingExpanded;
+        private bool settingsPage, showDetails, matchingExpanded = true;
         private string editorFilter = "All";
         private Texture2D? progressBar;
         private readonly HashSet<string> expandedModules = new HashSet<string>();
@@ -35,6 +35,7 @@ namespace ModGate
         }
         private void DrawContent()
         {
+            if (completionBackground) { Label("Profile setup"); Label("Downloads finished. Choose when to install your prepared setup."); return; }
             if (!manager && prepared != null && !settingsPage && featurePage.Length == 0)
             {
                 DrawReview();
